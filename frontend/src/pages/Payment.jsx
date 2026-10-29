@@ -1,0 +1,248 @@
+import React, { useEffect, useState } from 'react'
+import api, { fmt } from '../api'
+import { Loading, ErrorMsg, Badge, Modal } from '../components/UI'
+
+export default function Payment() {
+  const [plansData, setPlansData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [selectedPlan, setSelectedPlan] = useState('monthly')
+  const [initiating, setInitiating] = useState(false)
+  const [paytmPayload, setPaytmPayload] = useState(null)
+  const [checkOrderId, setCheckOrderId] = useState('')
+  const [orderStatus, setOrderStatus] = useState(null)
+  const [statusLoading, setStatusLoading] = useState(false)
+
+  const loadPlans = () => {
+    setLoading(true)
+    api.get('/payment/plans')
+      .then(r => setPlansData(r.data))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { loadPlans() }, [])
+
+  const handleInitiate = async (planId) => {
+    setInitiating(true)
+    setError(null)
+    setPaytmPayload(null)
+
+    try {
+      const res = await api.post('/payment/initiate', { plan: planId || selectedPlan })
+      setPaytmPayload(res.data)
+      setCheckOrderId(res.data.order_id)
+    } catch (err) {
+      const resp = err.response?.data
+      if (resp?.error === 'payment_not_configured') {
+        setError(resp.message)
+      } else {
+        setError(resp?.detail || err.message)
+      }
+    } finally {
+      setInitiating(false)
+    }
+  }
+
+  const handleCheckStatus = async () => {
+    if (!checkOrderId.trim()) return
+    setStatusLoading(true)
+    try {
+      const res = await api.get(`/payment/status/${checkOrderId.trim()}`)
+      setOrderStatus(res.data)
+    } catch (err) {
+      alert(err.response?.data?.detail || err.message)
+    } finally {
+      setStatusLoading(false)
+    }
+  }
+
+  // Trigger form submission to Paytm staging gateway
+  const handleProceedToPaytmGateway = () => {
+    if (!paytmPayload) return
+    const form = document.createElement('form')
+    form.setAttribute('method', 'post')
+    form.setAttribute('action', paytmPayload.txn_url)
+    form.setAttribute('name', 'paytm_form')
+
+    for (const key in paytmPayload.paytm_params) {
+      if (Object.prototype.hasOwnProperty.call(paytmPayload.paytm_params, key)) {
+        const input = document.createElement('input')
+        input.setAttribute('type', 'hidden')
+        input.setAttribute('name', key)
+        input.setAttribute('value', paytmPayload.paytm_params[key])
+        form.appendChild(input)
+      }
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+  }
+
+  if (loading) return <Loading text="Loading subscription details..." />
+
+  const isConfigured = plansData?.configured
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, color: 'var(--heading)' }}>DukaanSaathi Pro — Subscription & Paytm Gateway</h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+          Official server-side Paytm Payment Gateway integration with checksum verification & status enquiry.
+        </p>
+      </div>
+
+      {/* Configuration Status Notice */}
+      {!isConfigured ? (
+        <div className="alert alert-warning" style={{ marginBottom: 24 }}>
+          <strong>⚠️ Paytm Merchant Credentials Required:</strong><br />
+          To process live/staging payments, provide your <code>PAYTM_MID</code> and <code>PAYTM_MERCHANT_KEY</code> in the backend <code>.env</code> file.
+          <div style={{ marginTop: 6, fontSize: 13 }}>
+            Get your test credentials from: <a href="https://business.paytm.com/" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--teal-dark)' }}>https://business.paytm.com/</a>.
+            The backend architecture, checksum generator, callback webhook, and verification routes are fully implemented and ready.
+          </div>
+        </div>
+      ) : (
+        <div className="alert alert-success" style={{ marginBottom: 24 }}>
+          <strong>✓ Paytm Gateway Configured:</strong> Environment: <code>{plansData?.env || 'staging'}</code>. Ready to process transactions.
+        </div>
+      )}
+
+      {error && <ErrorMsg message={error} />}
+
+      {/* Subscription Plans */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 30 }}>
+        {(plansData?.plans || []).map(p => {
+          const isSelected = selectedPlan === p.id
+          return (
+            <div
+              key={p.id}
+              className="card"
+              style={{
+                border: isSelected ? '2px solid var(--teal)' : '1px solid var(--border)',
+                cursor: 'pointer',
+                position: 'relative'
+              }}
+              onClick={() => setSelectedPlan(p.id)}
+            >
+              {isSelected && (
+                <div style={{
+                  position: 'absolute', top: -10, right: 16,
+                  background: 'var(--teal)', color: '#fff',
+                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4
+                }}>
+                  Selected
+                </div>
+              )}
+              <div className="card-header">
+                <h3>{p.name}</h3>
+              </div>
+              <div className="card-body">
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--heading)', marginBottom: 8 }}>
+                  {fmt(p.amount)}
+                </div>
+                <ul style={{ paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.8 }}>
+                  <li>Automated weak-day opportunity alerts</li>
+                  <li>Deterministic margin loss protection</li>
+                  <li>WhatsApp Status & counter poster generator</li>
+                  <li>In-shop control group experiment analysis</li>
+                  <li>Priority AI Assistant support</li>
+                </ul>
+                <button
+                  className={`btn ${isSelected ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ width: '100%', marginTop: 16 }}
+                  disabled={initiating}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleInitiate(p.id)
+                  }}
+                >
+                  {initiating && isSelected ? 'Creating Order...' : `Subscribe for ${fmt(p.amount)}`}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Transaction Details Modal if Order Initiated */}
+      {paytmPayload && (
+        <Modal
+          title={`Paytm Payment Order: ${paytmPayload.order_id}`}
+          onClose={() => setPaytmPayload(null)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setPaytmPayload(null)}>Cancel</button>
+              <button className="btn btn-success" onClick={handleProceedToPaytmGateway}>
+                Proceed to Paytm Payment Gateway →
+              </button>
+            </>
+          }
+        >
+          <div>
+            <div className="alert alert-info" style={{ fontSize: 13 }}>
+              Backend generated order #{paytmPayload.order_id} with secure HMAC-SHA256 checksum signature.
+            </div>
+            <div style={{ background: 'var(--bg)', padding: 14, borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
+              <div><strong>Plan:</strong> {paytmPayload.plan}</div>
+              <div><strong>Amount:</strong> {fmt(paytmPayload.amount)}</div>
+              <div><strong>Environment:</strong> {paytmPayload.env}</div>
+              <div><strong>Gateway Target:</strong> <code style={{ fontSize: 11 }}>{paytmPayload.txn_url}</code></div>
+              <div style={{ marginTop: 8 }}><strong>Checksum (HMAC):</strong></div>
+              <code style={{ fontSize: 11, wordBreak: 'break-all', display: 'block', background: '#E2E8F0', padding: 6, borderRadius: 4 }}>
+                {paytmPayload.paytm_params?.CHECKSUMHASH}
+              </code>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+              Clicking below opens the official Paytm staging checkout. After payment, Paytm sends server-to-server webhook callback to <code>/api/payment/callback</code>.
+            </p>
+          </div>
+        </Modal>
+      )}
+
+      {/* Check Order Status Section */}
+      <div className="card">
+        <div className="card-header">
+          <h3>🔍 Server-Side Payment Status Verification</h3>
+        </div>
+        <div className="card-body">
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+            Never trusts client claims. Verifies directly against database post-callback & Paytm status enquiry API.
+          </p>
+          <div style={{ display: 'flex', gap: 10, maxWidth: 500, marginBottom: 16 }}>
+            <input
+              className="form-input"
+              placeholder="Enter Order ID (e.g. DS_123456...)"
+              value={checkOrderId}
+              onChange={e => setCheckOrderId(e.target.value)}
+            />
+            <button
+              className="btn btn-primary"
+              disabled={statusLoading || !checkOrderId.trim()}
+              onClick={handleCheckStatus}
+            >
+              {statusLoading ? 'Verifying...' : 'Check Status'}
+            </button>
+          </div>
+
+          {orderStatus && (
+            <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <strong>Order #{orderStatus.order_id}</strong>
+                <Badge status={orderStatus.status === 'SUCCESS' ? 'ok' : orderStatus.status === 'FAILED' ? 'blocked' : 'caution'} />
+              </div>
+              <div style={{ fontSize: 13 }}>
+                <div><strong>Amount:</strong> {fmt(orderStatus.amount)}</div>
+                <div><strong>Plan:</strong> {orderStatus.plan}</div>
+                <div><strong>Paytm Txn ID:</strong> {orderStatus.txn_id || 'Pending Gateway Completion'}</div>
+                <div><strong>Created:</strong> {orderStatus.created_at}</div>
+                <div><strong>Verified At:</strong> {orderStatus.verified_at || 'Awaiting Webhook Callback'}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
