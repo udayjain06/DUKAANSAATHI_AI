@@ -16,6 +16,35 @@ def utc_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+class UserProfile(Base):
+    __tablename__ = "user_profile"
+    id = Column(String(80), primary_key=True, index=True)  # Supabase UUID or local user ID
+    email = Column(String(120), unique=True, index=True)
+    full_name = Column(String(120), default="")
+    balance = Column(Float, default=25000.0)
+    language = Column(String(10), default="en")  # en | hi
+    theme = Column(String(10), default="dark")    # light | dark
+    monthly_budget = Column(Float, default=30000.0)
+    created_at = Column(DateTime, default=utc_now)
+
+    transactions = relationship("Transaction", back_populates="user")
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+    id = Column(String(80), primary_key=True, index=True)
+    user_id = Column(String(80), ForeignKey("user_profile.id"), nullable=False, index=True)
+    type = Column(String(20), default="expense")  # income | expense
+    category = Column(String(60), default="General")
+    amount = Column(Float, nullable=False)
+    description = Column(String(255), default="")
+    date = Column(Date, nullable=False, index=True)
+    is_anomaly = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=utc_now)
+
+    user = relationship("UserProfile", back_populates="transactions")
+
+
 class Merchant(Base):
     __tablename__ = "merchant"
     id = Column(Integer, primary_key=True, index=True)

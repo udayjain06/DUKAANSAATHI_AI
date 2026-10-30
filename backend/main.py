@@ -16,6 +16,7 @@ from api.routes_sales import router as sales_router, insights_router
 from api.routes_reco import router as reco_router, bills_router, margin_router
 from api.routes_offer import offer_router, experiment_router, chat_router, products_router
 from api.routes_payment import router as payment_router
+from api.routes_user_dashboard import router as user_router, ml_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -83,6 +84,8 @@ app.include_router(experiment_router)
 app.include_router(chat_router)
 app.include_router(products_router)
 app.include_router(payment_router)
+app.include_router(user_router)
+app.include_router(ml_router)
 
 
 @app.get("/")

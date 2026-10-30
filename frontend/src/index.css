@@ -71,6 +71,41 @@
 
 html { color-scheme: dark; }
 
+[data-theme="light"] {
+  --bg: #F4F6F9;
+  --bg-sidebar: #FFFFFF;
+  --card: #FFFFFF;
+  --surface: #EAEFF5;
+  --surface-2: #DFE5EE;
+  --border: #D5DCE6;
+  --border-subtle: #E3E9F1;
+  --heading: #0F172A;
+  --body: #334155;
+  --muted: #64748B;
+  --accent: #00BAF2;
+  --accent-dark: #0099C7;
+  --accent-soft: rgba(0, 186, 242, 0.12);
+  --accent-ink: #FFFFFF;
+  --brand: #002970;
+  --brand-dark: #001B4B;
+  --brand-soft: rgba(0, 41, 112, 0.12);
+  --success: #15803D;
+  --success-soft: rgba(21, 128, 61, 0.12);
+  --warning: #B45309;
+  --warning-soft: rgba(180, 83, 9, 0.12);
+  --error: #DC2626;
+  --error-soft: rgba(220, 38, 38, 0.12);
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-md: 0 6px 20px rgba(0,0,0,0.08);
+  --shadow-lg: 0 12px 36px rgba(0,0,0,0.12);
+}
+
+[data-theme="light"] html { color-scheme: light; }
+[data-theme="light"] .bg-grid { opacity: 0.12; }
+[data-theme="light"] .blob { opacity: 0.25; }
+[data-theme="light"] .cursor-ring { border-color: rgba(0, 186, 242, 0.6); }
+[data-theme="light"] .cursor-dot { background: #00BAF2; }
+
 body {
   font-family: var(--font-sans);
   background: var(--bg);
