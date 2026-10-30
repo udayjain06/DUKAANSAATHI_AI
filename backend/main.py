@@ -1,10 +1,11 @@
 """
-DukaanSaathi AI — FastAPI main entrypoint
+DukaanSaathi AI — FastAPI main entrypoint.
+Production-ready for Render, Supabase PostgreSQL, and Vercel frontend.
 """
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -21,27 +22,40 @@ from api.routes_user_dashboard import router as user_router, ml_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+# Parse ALLOWED_ORIGINS safely
+raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
+)
+allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+
+APP_ENV = os.getenv("APP_ENV", "production").lower()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: initialise DB and seed demo data if empty."""
-    init_db()
-    from db.session import SessionLocal
-    from db.models import SalesDaily
-    db = SessionLocal()
     try:
-        count = db.query(SalesDaily).count()
-        if count == 0:
-            logger.info("Empty database — seeding demo data...")
-            from engine.seed import run_seed
-            run_seed(db, shop_type="kirana")
-            logger.info("Demo data seeded.")
-        else:
-            logger.info(f"Database already has {count} sales records.")
-    finally:
-        db.close()
+        init_db()
+        from db.session import SessionLocal
+        from db.models import SalesDaily
+        db = SessionLocal()
+        try:
+            count = db.query(SalesDaily).count()
+            if count == 0:
+                logger.info("Empty database — seeding demo data...")
+                from engine.seed import run_seed
+                run_seed(db, shop_type="kirana")
+                logger.info("Demo data seeded.")
+            else:
+                logger.info(f"Database already has {count} sales records.")
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error(f"Database initialization warning at startup: {exc}")
+        logger.warning(
+            "Application started in resilient mode. Ensure your DATABASE_URL uses the IPv4 connection pooler on Render."
+        )
     yield
 
 
@@ -49,19 +63,32 @@ app = FastAPI(
     title="DukaanSaathi AI — Backend API",
     description=(
         "Merchant analytics, recommendation engine, margin calculator, "
-        "experiment measurement, and Paytm payment integration."
+        "ML spending predictions, Paytm gateway, and Groq AI integration."
     ),
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS Configuration — Allows localhost and any Vercel deployment (*.vercel.app)
+if "*" in allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_origin_regex=r"^https://.*\.vercel\.app$",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.middleware("http")
@@ -71,6 +98,7 @@ async def add_security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
+
 
 # Register routers
 app.include_router(merchant_router)
@@ -95,12 +123,31 @@ def root():
         "version": "1.0.0",
         "docs": "/docs",
         "status": "running",
+        "environment": APP_ENV,
+    }
+
+
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    """Health check for Render, load balancers, and monitoring."""
+    return {
+        "status": "healthy",
+        "app": "DukaanSaathi AI",
+        "environment": APP_ENV,
     }
 
 
 @app.post("/api/reset")
 def reset_database():
-    """Reset and reseed demo database. One-command demo reset."""
+    """Reset and reseed demo database. Blocked in production to protect data."""
+    raw_db = os.getenv("DATABASE_URL", "")
+    if APP_ENV == "production" or ("sqlite" not in raw_db and raw_db != ""):
+        raise HTTPException(
+            status_code=403,
+            detail="Database reset is disabled in production environments to protect persistent data."
+        )
+
     from db.session import SessionLocal, engine
     from db.models import Base
     Base.metadata.drop_all(bind=engine)
@@ -112,4 +159,3 @@ def reset_database():
     finally:
         db.close()
     return {"status": "reset_complete", "message": "Database reset and demo data reseeded."}
-

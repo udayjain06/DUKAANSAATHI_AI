@@ -88,3 +88,4 @@ def ask_groq_assistant(
         if is_hi:
             return "नमस्ते! मैं आपका Paytm AI वित्तीय सहायक हूँ। अपनी बचत, खर्च के रुझान, या आगामी वित्तीय भविष्यवाणियों के बारे में कुछ भी पूछें।"
         return "Hello! I am your Paytm AI Financial Assistant. Ask me anything about your spending trends, ML predictions, budgeting, or profit margins."
+

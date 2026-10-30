@@ -12,3 +12,4 @@ export const isSupabaseConfigured = () => {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
