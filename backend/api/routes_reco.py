@@ -1,7 +1,7 @@
 """Recommendation + Bills routes."""
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from sqlalchemy.orm import Session
 from db.session import get_db
@@ -69,8 +69,18 @@ class DecisionPayload(BaseModel):
 
 @router.post("/{rec_id}/decision")
 def decision(rec_id: str, payload: DecisionPayload, db: Session = Depends(get_db)):
-    """Approve, Modify, or Reject a recommendation."""
-    return apply_decision(db, rec_id, payload.decision, payload.modified_offer)
+    """Approve, Modify, or Reject a recommendation. Auto-creates offer and experiment on approval."""
+    result = apply_decision(db, rec_id, payload.decision, payload.modified_offer)
+    if payload.decision in ("approved", "modified"):
+        from api.routes_offer import create_offer
+        from db.models import Offer
+        existing_offer = db.query(Offer).filter(Offer.recommendation_id == rec_id).first()
+        if not existing_offer:
+            try:
+                create_offer(rec_id, db)
+            except Exception as e:
+                pass
+    return result
 
 
 # ─── Margin Calculator ───────────────────────────────────────────────────────
@@ -78,10 +88,10 @@ margin_router = APIRouter(prefix="/api/margin", tags=["margin"])
 
 
 class MarginCalcRequest(BaseModel):
-    sell_price: float
-    cost_price: float
-    discount_pct: float
-    min_margin_pct: float = 15.0
+    sell_price: float = Field(..., gt=0, description="Selling price must be > 0")
+    cost_price: float = Field(..., ge=0, description="Cost price must be >= 0")
+    discount_pct: float = Field(..., ge=0, le=100, description="Discount must be 0-100%")
+    min_margin_pct: float = Field(default=15.0, ge=0, le=100)
 
 
 @margin_router.post("/check")
@@ -95,10 +105,21 @@ def margin_check(req: MarginCalcRequest):
 
 # ─── Bills ──────────────────────────────────────────────────────────────────
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
 @bills_router.post("/upload")
 async def upload_bill(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Upload a bill photo — AI extracts items (falls back to empty list)."""
+    # Validate content type
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+    if file.content_type and file.content_type not in allowed_types and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image or PDF invoice.")
+
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10 MB.")
+
     try:
         from ai.interfaces import ai_extract_bill_items
         items = ai_extract_bill_items(contents)
@@ -114,11 +135,11 @@ async def upload_bill(file: UploadFile = File(...), db: Session = Depends(get_db
 
 
 class BillConfirmItem(BaseModel):
-    product_name: str
-    cost_price: float
-    quantity: float = 1.0
-    unit: str = "unit"
-    bill_ref: Optional[str] = None
+    product_name: str = Field(..., min_length=1, max_length=120)
+    cost_price: float = Field(..., gt=0)
+    quantity: float = Field(default=1.0, gt=0)
+    unit: str = Field(default="unit", max_length=20)
+    bill_ref: Optional[str] = Field(default=None, max_length=60)
 
 
 class BillConfirmPayload(BaseModel):

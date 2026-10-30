@@ -158,23 +158,23 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)):
 # ─── Products ────────────────────────────────────────────────────────────────
 
 from db.models import Product
-from pydantic import BaseModel as BM
+from pydantic import BaseModel as BM, Field
 
 
 class ProductCreate(BM):
-    name: str
-    category: str = "general"
-    sell_price: float
-    cost_price: Optional[float] = None
-    cost_source: str = "manual"
+    name: str = Field(..., min_length=1, max_length=120)
+    category: str = Field(default="general", max_length=60)
+    sell_price: float = Field(..., gt=0)
+    cost_price: Optional[float] = Field(default=None, ge=0)
+    cost_source: str = Field(default="manual", max_length=20)
 
 
 class ProductUpdate(BM):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    sell_price: Optional[float] = None
-    cost_price: Optional[float] = None
-    cost_source: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    category: Optional[str] = Field(default=None, max_length=60)
+    sell_price: Optional[float] = Field(default=None, gt=0)
+    cost_price: Optional[float] = Field(default=None, ge=0)
+    cost_source: Optional[str] = Field(default=None, max_length=20)
     is_active: Optional[bool] = None
 
 

@@ -206,9 +206,9 @@ def apply_decision(db: Session, rec_id: str, decision: str, modified_offer: dict
     if decision not in valid:
         return {"error": f"Decision must be one of {valid}"}
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     rec.status = decision
-    rec.decided_at = datetime.utcnow()
+    rec.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
     if decision == "modified" and modified_offer:
         rec.modified_offer_json = modified_offer
     db.commit()

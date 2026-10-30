@@ -1,7 +1,7 @@
 """
 DukaanSaathi AI — Database models (SQLAlchemy)
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, DateTime, Date,
     ForeignKey, Text, JSON
@@ -9,6 +9,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
+
+
+def utc_now():
+    """Return timezone-naive UTC datetime for clean DB compatibility."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Merchant(Base):
@@ -20,7 +25,7 @@ class Merchant(Base):
     language = Column(String(10), default="hi")       # hi | en
     risk_budget_inr = Column(Float, default=400.0)
     phone = Column(String(20), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     products = relationship("Product", back_populates="merchant")
     sales = relationship("SalesDaily", back_populates="merchant")
@@ -38,7 +43,7 @@ class Product(Base):
     cost_price = Column(Float, nullable=True)
     cost_source = Column(String(20), default="manual")  # bill | manual
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     merchant = relationship("Merchant", back_populates="products")
     sales_product = relationship("SalesProductDaily", back_populates="product")
@@ -80,7 +85,7 @@ class BillItem(Base):
     quantity = Column(Float, default=1.0)
     unit = Column(String(20), default="unit")
     confirmed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class Recommendation(Base):
@@ -95,7 +100,7 @@ class Recommendation(Base):
     explanation_json = Column(JSON)
     status = Column(String(20), default="pending")  # pending | approved | modified | rejected
     data_label = Column(String(20), default="synthetic")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     decided_at = Column(DateTime, nullable=True)
     modified_offer_json = Column(JSON, nullable=True)
 
@@ -115,7 +120,7 @@ class Offer(Base):
     units_cap = Column(Integer, nullable=True)
     units_redeemed = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     recommendation = relationship("Recommendation", back_populates="offers")
     experiments = relationship("Experiment", back_populates="offer")
@@ -134,7 +139,7 @@ class Experiment(Base):
     gp_change_inr = Column(Float, nullable=True)
     is_simulated = Column(Boolean, default=True)
     data_label = Column(String(20), default="synthetic")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     offer = relationship("Offer", back_populates="experiments")
 
@@ -150,8 +155,7 @@ class PaymentOrder(Base):
     plan_name = Column(String(60), default="monthly")
     status = Column(String(30), default="PENDING")  # PENDING | SUCCESS | FAILED | CANCELLED
     paytm_response_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     verified_at = Column(DateTime, nullable=True)
 
     merchant = relationship("Merchant", back_populates="payment_orders")
-

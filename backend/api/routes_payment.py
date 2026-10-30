@@ -6,7 +6,7 @@ import json
 import hashlib
 import hmac
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -51,6 +51,8 @@ def _paytm_configured() -> bool:
 
 def _generate_checksum(params: dict, key: str) -> str:
     """Generate Paytm checksum using HMAC-SHA256."""
+    if not key:
+        return ""
     sorted_params = {k: str(v) for k, v in sorted(params.items())}
     param_string = "|".join(sorted_params.values())
     signature = hmac.new(key.encode(), param_string.encode(), hashlib.sha256).hexdigest()
@@ -59,6 +61,8 @@ def _generate_checksum(params: dict, key: str) -> str:
 
 def _verify_checksum(params: dict, key: str, checksum: str) -> bool:
     """Verify Paytm checksum from callback."""
+    if not key or not checksum:
+        return False
     params_copy = {k: v for k, v in params.items() if k != "CHECKSUMHASH"}
     expected = _generate_checksum(params_copy, key)
     return hmac.compare_digest(expected, checksum)
@@ -190,7 +194,7 @@ async def payment_callback(request: Request, db: Session = Depends(get_db)):
 
     po.txn_id = txn_id
     po.paytm_response_json = dict(params)
-    po.verified_at = datetime.utcnow()
+    po.verified_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
 
     return {"status": po.status, "order_id": order_id}

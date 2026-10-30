@@ -26,8 +26,7 @@ class MerchantResponse(BaseModel):
     risk_budget_inr: float
     phone: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 @router.post("/setup", response_model=MerchantResponse)
