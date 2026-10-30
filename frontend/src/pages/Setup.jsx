@@ -76,10 +76,12 @@ export default function Setup() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, color: 'var(--heading)' }}>Shop Configuration & Demo Controls</h2>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          Configure shop category, minimum profit margin thresholds, risk budgets, and language.
+      <div style={{ marginBottom: 22 }}>
+        <h2 style={{ fontSize: 20, color: 'var(--heading)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          Shop Configuration & Demo Controls
+        </h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+          Configure shop category, minimum profit margin thresholds, risk budgets, and default language.
         </p>
       </div>
 
@@ -114,7 +116,7 @@ export default function Setup() {
                   <option value="kirana">Kirana / General Store</option>
                   <option value="bakery">Bakery / Confectionery</option>
                 </select>
-                <small style={{ color: 'var(--muted)', marginTop: 4, display: 'block' }}>
+                <small style={{ color: 'var(--muted)', marginTop: 5, display: 'block', fontSize: 12 }}>
                   Determines synthetic data baseline and wholesale product categories.
                 </small>
               </div>
@@ -131,7 +133,7 @@ export default function Setup() {
                   value={form.min_margin_pct}
                   onChange={e => setForm({ ...form, min_margin_pct: e.target.value })}
                 />
-                <small style={{ color: 'var(--muted)', marginTop: 4, display: 'block' }}>
+                <small style={{ color: 'var(--muted)', marginTop: 5, display: 'block', fontSize: 12 }}>
                   Offers producing margins below this threshold will be blocked to protect profit.
                 </small>
               </div>
@@ -147,7 +149,7 @@ export default function Setup() {
                   value={form.risk_budget_inr}
                   onChange={e => setForm({ ...form, risk_budget_inr: e.target.value })}
                 />
-                <small style={{ color: 'var(--muted)', marginTop: 4, display: 'block' }}>
+                <small style={{ color: 'var(--muted)', marginTop: 5, display: 'block', fontSize: 12 }}>
                   Controls the maximum permitted customer unit cap: <code>units_cap = budget / loss_per_unit</code>.
                 </small>
               </div>
@@ -168,7 +170,7 @@ export default function Setup() {
                 type="submit"
                 className="btn btn-primary"
                 disabled={saving}
-                style={{ width: '100%', marginTop: 8 }}
+                style={{ width: '100%', marginTop: 10 }}
               >
                 {saving ? 'Saving...' : 'Save Configuration'}
               </button>
@@ -185,7 +187,7 @@ export default function Setup() {
             <div className="alert alert-info">
               <strong>Fixed Random Seed (seed=42):</strong> Results remain 100% reproducible for judges and live demonstrations.
             </div>
-            <p style={{ fontSize: 13, color: 'var(--body)', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: 'var(--body)', marginBottom: 18, lineHeight: 1.55 }}>
               Need to restart the live demo from scratch? Click below to reset all tables and re-seed 8 weeks of synthetic sales with Monday dips, weekend boosts, and salary window patterns.
             </p>
             <button
@@ -197,9 +199,9 @@ export default function Setup() {
               {resetting ? 'Resetting Database...' : '⚡ One-Click Reset & Re-Seed Database'}
             </button>
 
-            <div style={{ marginTop: 24, padding: 14, background: '#F1F5F9', borderRadius: 8, fontSize: 12 }}>
-              <strong style={{ color: 'var(--heading)' }}>Expected Pattern Highlights:</strong>
-              <ul style={{ paddingLeft: 18, marginTop: 6, lineHeight: 1.6, color: 'var(--body)' }}>
+            <div style={{ marginTop: 24, padding: 16, background: 'var(--surface)', borderRadius: 'var(--radius-sm)', fontSize: 12 }}>
+              <strong style={{ color: 'var(--heading)', fontSize: 12.5 }}>Expected Pattern Highlights:</strong>
+              <ul style={{ paddingLeft: 18, marginTop: 8, lineHeight: 1.6, color: 'var(--body)' }}>
                 <li>Mondays: 12% to 18% sales dip (weak-day trigger)</li>
                 <li>Dates 1-7: Salary-window purchasing bump (+10-15%)</li>
                 <li>Weekends: Friday-Sunday higher footfall</li>
@@ -212,4 +214,3 @@ export default function Setup() {
     </div>
   )
 }
-

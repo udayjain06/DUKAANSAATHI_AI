@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import api, { fmt } from '../api'
 import { ErrorMsg } from '../components/UI'
 
@@ -9,8 +9,9 @@ export default function Bills() {
   const [error, setError] = useState(null)
   const [extractedItems, setExtractedItems] = useState([])
   const [billRef, setBillRef] = useState(`BILL-${Date.now().toString().slice(-4)}`)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef(null)
 
-  // Manual row addition if AI is unavailable or for missing items
   const handleAddItem = () => {
     setExtractedItems([
       ...extractedItems,
@@ -28,15 +29,15 @@ export default function Bills() {
     setExtractedItems(extractedItems.filter((_, i) => i !== idx))
   }
 
-  const handleUpload = async (e) => {
-    e.preventDefault()
-    if (!file) return
+  const handleUpload = async (fileToUpload) => {
+    const targetFile = fileToUpload || file
+    if (!targetFile) return
     setUploading(true)
     setError(null)
     setStatusMsg(null)
 
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', targetFile)
 
     try {
       const res = await api.post('/bills/upload', formData, {
@@ -49,10 +50,9 @@ export default function Bills() {
           quantity: it.quantity || 1,
           unit: it.unit || 'pcs'
         })))
-        setStatusMsg(`Successfully extracted ${res.data.extracted_items.length} items via AI OCR. Please review and confirm.`)
+        setStatusMsg(`Successfully extracted ${res.data.extracted_items.length} items via AI OCR. Review wholesale costs below.`)
       } else {
-        setStatusMsg("AI OCR completed (no items detected or template mode active). You can manually enter wholesale bill items below.")
-        // Add a sample template row so the user can easily start
+        setStatusMsg("AI OCR completed. Template fallback initiated — add or verify wholesale items below.")
         if (extractedItems.length === 0) {
           setExtractedItems([
             { product_name: 'Tata Tea Gold 250g', cost_price: 115, quantity: 10, unit: 'pack' },
@@ -99,33 +99,87 @@ export default function Bills() {
     }
   }
 
+  const onDragOver = (e) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const onDragLeave = () => {
+    setIsDragOver(false)
+  }
+
+  const onDrop = (e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0]
+      setFile(droppedFile)
+      handleUpload(droppedFile)
+    }
+  }
+
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, color: 'var(--heading)' }}>Wholesale Bill & Cost Capture</h2>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          Upload supplier invoice / distributor bill photos. The AI extracts items, wholesale costs, and updates your inventory automatically.
+      <div style={{ marginBottom: 22 }}>
+        <h2 style={{ fontSize: 20, color: 'var(--heading)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          Wholesale Bill & Cost Capture
+        </h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+          Upload supplier invoice or distributor bill photos. The AI extracts items, wholesale costs, and updates your inventory automatically.
         </p>
       </div>
 
       {error && <ErrorMsg message={error} />}
       {statusMsg && <div className="alert alert-info">{statusMsg}</div>}
 
+      {/* Upload drop zone */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div className="card-header"><h3>📸 Upload Bill Photo / Invoice</h3></div>
+        <div className="card-header">
+          <h3>📸 Upload Invoice / Bill Photo</h3>
+        </div>
         <div className="card-body">
-          <form onSubmit={handleUpload} style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              border: `2px dashed ${isDragOver ? 'var(--teal)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius)',
+              padding: '32px 20px',
+              textAlign: 'center',
+              background: isDragOver ? 'var(--teal-light)' : 'var(--surface)',
+              cursor: 'pointer',
+              transition: 'all var(--duration) var(--ease-smooth)',
+              marginBottom: 16
+            }}
+          >
             <input
               type="file"
+              ref={fileInputRef}
               accept="image/*,.pdf"
-              className="form-input"
-              style={{ maxWidth: 360 }}
-              onChange={e => setFile(e.target.files[0])}
+              style={{ display: 'none' }}
+              onChange={e => {
+                if (e.target.files && e.target.files[0]) {
+                  setFile(e.target.files[0])
+                }
+              }}
             />
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+            <div style={{ fontWeight: 650, color: 'var(--heading)', fontSize: 14 }}>
+              {file ? file.name : 'Drop supplier bill here or click to browse'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+              Supports JPG, PNG invoices and PDF supplier receipts
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
-              type="submit"
+              type="button"
               disabled={!file || uploading}
               className="btn btn-primary"
+              onClick={() => handleUpload()}
             >
               {uploading ? 'Extracting via AI...' : 'Scan & Extract Items'}
             </button>
@@ -136,22 +190,19 @@ export default function Bills() {
             >
               + Add Row Manually
             </button>
-          </form>
-          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
-            Supports JPG, PNG invoices. If AI API key is not configured, reliable template fallback allows instant manual correction.
           </div>
         </div>
       </div>
 
-      {/* Extracted items table for review & confirmation */}
+      {/* Review table */}
       <div className="card">
         <div className="card-header">
           <h3>Review & Confirm Extracted Items</h3>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'var(--muted)' }}>Bill Ref:</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Bill Ref:</span>
             <input
               className="form-input"
-              style={{ width: 140, padding: '4px 8px', fontSize: 13 }}
+              style={{ width: 130, padding: '5px 10px', fontSize: 12.5 }}
               value={billRef}
               onChange={e => setBillRef(e.target.value)}
             />
@@ -162,17 +213,17 @@ export default function Bills() {
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: '40%' }}>Product Name</th>
+                  <th style={{ width: '42%' }}>Product Name</th>
                   <th>Wholesale Cost (₹)</th>
                   <th>Quantity</th>
                   <th>Unit</th>
-                  <th>Action</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {extractedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
                       No items to review. Upload a bill or click "+ Add Row Manually" above.
                     </td>
                   </tr>
@@ -182,7 +233,7 @@ export default function Bills() {
                       <td>
                         <input
                           className="form-input"
-                          style={{ padding: '6px 10px' }}
+                          style={{ padding: '7px 12px', fontSize: 13 }}
                           value={item.product_name}
                           onChange={e => handleUpdateItem(idx, 'product_name', e.target.value)}
                           placeholder="e.g. Parle-G 100g"
@@ -193,7 +244,7 @@ export default function Bills() {
                           type="number"
                           step="0.01"
                           className="form-input"
-                          style={{ padding: '6px 10px', width: 120 }}
+                          style={{ padding: '7px 12px', width: 120, fontSize: 13 }}
                           value={item.cost_price}
                           onChange={e => handleUpdateItem(idx, 'cost_price', e.target.value)}
                           placeholder="Cost ₹"
@@ -203,7 +254,7 @@ export default function Bills() {
                         <input
                           type="number"
                           className="form-input"
-                          style={{ padding: '6px 10px', width: 80 }}
+                          style={{ padding: '7px 12px', width: 80, fontSize: 13 }}
                           value={item.quantity}
                           onChange={e => handleUpdateItem(idx, 'quantity', e.target.value)}
                         />
@@ -211,15 +262,17 @@ export default function Bills() {
                       <td>
                         <input
                           className="form-input"
-                          style={{ padding: '6px 10px', width: 90 }}
+                          style={{ padding: '7px 12px', width: 90, fontSize: 13 }}
                           value={item.unit}
                           onChange={e => handleUpdateItem(idx, 'unit', e.target.value)}
                         />
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'right' }}>
                         <button
-                          className="btn btn-danger btn-sm"
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--error)' }}
                           onClick={() => handleRemoveItem(idx)}
+                          aria-label="Remove item"
                         >
                           ✕
                         </button>
@@ -231,8 +284,17 @@ export default function Bills() {
             </table>
           </div>
           {extractedItems.length > 0 && (
-            <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid var(--border)' }}>
-              <button className="btn btn-ghost" onClick={handleAddItem}>+ Add Another Row</button>
+            <div style={{
+              padding: '16px 22px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderTop: '1px solid var(--border)',
+              background: 'var(--surface)'
+            }}>
+              <button className="btn btn-ghost btn-sm" onClick={handleAddItem}>
+                + Add Another Row
+              </button>
               <button className="btn btn-success" onClick={handleConfirm}>
                 ✓ Confirm & Save {extractedItems.length} Items to Inventory
               </button>
@@ -243,4 +305,3 @@ export default function Bills() {
     </div>
   )
 }
-

@@ -41,27 +41,33 @@ export default function Offers() {
     }
   }
 
-  if (loading) return <Loading text="Loading active offers and experiments..." />
+  if (loading) return <Loading text="Loading active offers & experiments..." />
   if (error) return <ErrorMsg message={error} />
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, color: 'var(--heading)' }}>Active Offers & In-Shop Experiments</h2>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          WhatsApp Status-ready creatives, printable posters with QR code, and rigorous A/B experiment measurement against shop control groups.
+      <div style={{ marginBottom: 22 }}>
+        <h2 style={{ fontSize: 20, color: 'var(--heading)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          Active Offers & In-Shop Experiments
+        </h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+          WhatsApp Status-ready marketing copy, printable counter posters with QR codes, and rigorous A/B experiment measurement against control groups.
         </p>
       </div>
 
-      <div className="alert alert-info" style={{ marginBottom: 20 }}>
+      <div className="alert alert-info" style={{ marginBottom: 22 }}>
         <strong>📊 Scientific Measurement Notice:</strong> Net lift is measured by comparing treatment items against similar control products within your shop. All demo results are strictly labelled as simulated.
       </div>
 
       {offers.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center' }}>
-          <p style={{ color: 'var(--muted)', marginBottom: 12 }}>No active offers created yet.</p>
+        <div className="card" style={{ padding: 48, textAlign: 'center' }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>🎯</div>
+          <h3 style={{ fontSize: 16, fontWeight: 650, color: 'var(--heading)' }}>No active offers yet</h3>
+          <p style={{ color: 'var(--muted)', fontSize: 13, maxWidth: 420, margin: '8px auto 20px' }}>
+            Approve a recommendation to automatically generate marketing copy, in-shop posters, and experiment tracking.
+          </p>
           <a href="/recommendations" className="btn btn-primary">
-            Review & Approve a Recommendation First →
+            Review Recommendations →
           </a>
         </div>
       ) : (
@@ -75,8 +81,8 @@ export default function Offers() {
               <div key={o.id} className="card">
                 <div className="card-header">
                   <div>
-                    <strong>Offer #{o.id}</strong>
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    <strong style={{ fontSize: 15, color: 'var(--heading)' }}>Offer #{o.id}</strong>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                       Valid: {o.valid_from} to {o.valid_to}
                     </div>
                   </div>
@@ -86,35 +92,49 @@ export default function Offers() {
                 <div className="card-body">
                   {/* WhatsApp Status Creative Preview */}
                   <div style={{
-                    background: '#075E54',
+                    background: 'linear-gradient(135deg, #075E54 0%, #128C7E 100%)',
                     color: '#FFFFFF',
                     padding: 16,
-                    borderRadius: 10,
+                    borderRadius: 12,
                     marginBottom: 16,
-                    fontFamily: 'system-ui',
-                    boxShadow: '0 2px 8px rgba(7,94,84,0.25)'
+                    boxShadow: '0 4px 14px rgba(7,94,84,0.22)',
+                    transition: 'transform var(--duration) var(--ease-smooth)'
                   }}>
-                    <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 600, marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>📱 WhatsApp Status Ready Copy</span>
-                      <span>🟢 Live</span>
+                    <div style={{
+                      fontSize: 11,
+                      color: '#A7F3D0',
+                      fontWeight: 650,
+                      marginBottom: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      letterSpacing: '0.04em'
+                    }}>
+                      <span>📱 WHATSAPP STATUS READY</span>
+                      <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: 10 }}>LIVE</span>
                     </div>
-                    <div style={{ fontSize: 14, whiteSpace: 'pre-line', lineHeight: 1.4 }}>
-                      {copy.whatsapp || 'Special Offer Available Today!'}
+                    <div style={{ fontSize: 13.5, whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                      {copy.whatsapp || 'Special Offer Available Today! Visit store to avail.'}
                     </div>
                   </div>
 
                   {/* Units Capping Rule */}
-                  <div style={{ background: 'var(--bg)', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span className="stat-label">Maximum Units Cap:</span>
+                  <div style={{
+                    background: 'var(--surface)',
+                    padding: 14,
+                    borderRadius: 'var(--radius-sm)',
+                    marginBottom: 16,
+                    fontSize: 13
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <span className="stat-label">Units Cap:</span>
                       <strong style={{ color: 'var(--heading)' }}>{o.units_cap || 40} units</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span className="stat-label">Redeemed:</span>
-                      <span style={{ fontWeight: 600, color: 'var(--teal)' }}>{o.units_redeemed || 0} / {o.units_cap || 40}</span>
+                      <span style={{ fontWeight: 650, color: 'var(--teal)' }}>{o.units_redeemed || 0} / {o.units_cap || 40}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                      Offer automatically closes once {o.units_cap || 40} customers redeem to protect merchant risk budget.
+                    <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6, lineHeight: 1.4 }}>
+                      Offer automatically closes once {o.units_cap || 40} customers redeem to protect your risk budget.
                     </div>
                   </div>
 
@@ -145,21 +165,21 @@ export default function Offers() {
 
       {/* Poster Preview Modal */}
       {selectedPoster && (
-        <Modal title="Store Front Poster Preview" onClose={() => setSelectedPoster(null)}>
+        <Modal title="Store Front Counter Poster" onClose={() => setSelectedPoster(null)}>
           <div style={{
-            border: '3px dashed var(--teal)',
-            padding: 24,
+            border: '2px dashed var(--teal)',
+            padding: 28,
             textAlign: 'center',
             background: 'var(--white)',
-            borderRadius: 8
+            borderRadius: 14
           }}>
-            <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--teal-dark)', fontWeight: 800 }}>
-              DukaanSaathi Partner Shop
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--teal)', fontWeight: 800 }}>
+              DukaanSaathi Partner Merchant
             </div>
-            <h2 style={{ fontSize: 24, color: 'var(--heading)', margin: '12px 0 8px' }}>
+            <h2 style={{ fontSize: 22, color: 'var(--heading)', margin: '14px 0 8px', fontWeight: 800 }}>
               {selectedPoster.headline || 'SPECIAL OFFER'}
             </h2>
-            <p style={{ fontSize: 15, color: 'var(--body)', marginBottom: 20 }}>
+            <p style={{ fontSize: 14, color: 'var(--body)', marginBottom: 20 }}>
               {selectedPoster.body || 'Visit today for exclusive discounts!'}
             </p>
 
@@ -174,18 +194,19 @@ export default function Offers() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 8
+              borderRadius: 12,
+              boxShadow: 'var(--shadow-xs)'
             }}>
               <span style={{ fontSize: 36 }}>📱</span>
-              <span style={{ fontSize: 10, fontWeight: 700, marginTop: 4 }}>SCAN WITH PAYTM</span>
+              <span style={{ fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: '0.04em' }}>PAYTM QR SCAN</span>
             </div>
 
             <button className="btn btn-success btn-sm" style={{ pointerEvents: 'none' }}>
               {selectedPoster.cta || 'Avail Offer at Counter'}
             </button>
 
-            <div style={{ marginTop: 16, fontSize: 11, color: 'var(--muted)' }}>
-              {selectedPoster.disclaimer || '[Simulated poster — printable format]'}
+            <div style={{ marginTop: 18, fontSize: 11, color: 'var(--muted)' }}>
+              {selectedPoster.disclaimer || '[Simulated poster — printable counter format]'}
             </div>
           </div>
         </Modal>
@@ -201,30 +222,46 @@ export default function Offers() {
             <Loading text="Retrieving in-shop experiment calculations..." />
           ) : expResult ? (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <span className="badge badge-synthetic">Simulated In-Shop Control</span>
                 <DataLabel label={expResult.data_label} />
               </div>
 
               {/* Net Lift & GP change cards */}
-              <div className="grid-2" style={{ marginBottom: 16 }}>
-                <div style={{ background: 'var(--bg)', padding: 14, borderRadius: 8, borderLeft: '4px solid var(--teal)' }}>
+              <div className="grid-2" style={{ marginBottom: 18 }}>
+                <div style={{
+                  background: 'var(--surface)',
+                  padding: 16,
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: '4px solid var(--teal)'
+                }}>
                   <div className="stat-label">Net Sales Lift</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--teal)', marginTop: 4 }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--teal)', marginTop: 4, letterSpacing: '-0.02em' }}>
                     +{pct(expResult.net_lift_pct)}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    Treatment change minus control change
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                    Treatment lift minus control lift
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--bg)', padding: 14, borderRadius: 8, borderLeft: '4px solid var(--success)' }}>
+                <div style={{
+                  background: 'var(--surface)',
+                  padding: 16,
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: `4px solid ${expResult.gp_change_inr >= 0 ? 'var(--success)' : 'var(--error)'}`
+                }}>
                   <div className="stat-label">Gross Profit Change</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: expResult.gp_change_inr >= 0 ? 'var(--success)' : 'var(--error)', marginTop: 4 }}>
+                  <div style={{
+                    fontSize: 26,
+                    fontWeight: 800,
+                    color: expResult.gp_change_inr >= 0 ? 'var(--success)' : 'var(--error)',
+                    marginTop: 4,
+                    letterSpacing: '-0.02em'
+                  }}>
                     {expResult.gp_change_inr >= 0 ? '+' : ''}{fmt(expResult.gp_change_inr)}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    Total after-cost profit impact
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                    Net profit after discount expense
                   </div>
                 </div>
               </div>
@@ -242,7 +279,7 @@ export default function Offers() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td><strong>Treatment (Offer Items)</strong></td>
+                      <td><strong style={{ color: 'var(--heading)' }}>Treatment (Offer Items)</strong></td>
                       <td>{expResult.treatment?.before_units}</td>
                       <td>{expResult.treatment?.after_units}</td>
                       <td style={{ color: 'var(--teal)', fontWeight: 700 }}>
@@ -250,7 +287,7 @@ export default function Offers() {
                       </td>
                     </tr>
                     <tr>
-                      <td><strong>Control (Similar Items)</strong></td>
+                      <td><strong style={{ color: 'var(--muted)' }}>Control (Similar Items)</strong></td>
                       <td>{expResult.control?.before_units}</td>
                       <td>{expResult.control?.after_units}</td>
                       <td style={{ color: 'var(--muted)', fontWeight: 600 }}>
@@ -261,7 +298,7 @@ export default function Offers() {
                 </table>
               </div>
 
-              <div className="alert alert-info" style={{ fontSize: 13, marginBottom: 8 }}>
+              <div className="alert alert-info" style={{ fontSize: 13, marginBottom: 10 }}>
                 <strong>💡 Engine Interpretation:</strong> {expResult.interpretation}
               </div>
 
@@ -275,4 +312,3 @@ export default function Offers() {
     </div>
   )
 }
-

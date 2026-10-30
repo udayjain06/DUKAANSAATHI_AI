@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api, { fmt, pct } from '../api'
-import { Loading, ErrorMsg, Modal } from '../components/UI'
+import { Loading, ErrorMsg, Modal, Badge } from '../components/UI'
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -8,6 +8,8 @@ export default function Products() {
   const [error, setError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCat, setSelectedCat] = useState('all')
   const [form, setForm] = useState({ name: '', category: 'grocery', sell_price: '', cost_price: '', cost_source: 'manual' })
 
   const load = () => {
@@ -70,17 +72,60 @@ export default function Products() {
     }
   }
 
-  if (loading) return <Loading text="Loading products..." />
+  if (loading) return <Loading text="Loading catalog & costs..." />
   if (error) return <ErrorMsg message={error} />
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          p.category.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCat = selectedCat === 'all' || p.category === selectedCat
+    return matchesSearch && matchesCat
+  })
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, flexWrap: 'wrap', gap: 14 }}>
         <div>
-          <h2 style={{ fontSize: 20, color: 'var(--heading)' }}>Products & Cost Management</h2>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Accurate cost prices enable automated margin calculations & risk capping</p>
+          <h2 style={{ fontSize: 20, color: 'var(--heading)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+            Products & Cost Management
+          </h2>
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+            Accurate wholesale costs ensure automated margin protection and risk limits for all promotional offers.
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Product</button>
+        <button className="btn btn-primary" onClick={handleOpenAdd}>
+          + Add New Product
+        </button>
+      </div>
+
+      {/* Filter and search bar */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          className="form-input"
+          placeholder="🔍 Search products by name or category..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{ maxWidth: 320, padding: '8px 14px', fontSize: 13 }}
+        />
+        <select
+          className="form-select"
+          value={selectedCat}
+          onChange={e => setSelectedCat(e.target.value)}
+          style={{ maxWidth: 180, padding: '8px 12px', fontSize: 13 }}
+        >
+          <option value="all">All Categories</option>
+          <option value="snacks">Snacks</option>
+          <option value="beverages">Beverages</option>
+          <option value="grocery">Grocery</option>
+          <option value="dairy">Dairy</option>
+          <option value="household">Household</option>
+          <option value="personal_care">Personal Care</option>
+          <option value="bakery">Bakery</option>
+          <option value="general">General</option>
+        </select>
+        <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 'auto' }}>
+          Showing {filteredProducts.length} of {products.length} items
+        </span>
       </div>
 
       <div className="card">
@@ -95,27 +140,46 @@ export default function Products() {
                 <th>Gross Margin</th>
                 <th>Cost Source</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No products found. Add your first product.</td></tr>
+              {filteredProducts.length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: 36, color: 'var(--muted)' }}>
+                    No matching products found. Try adjusting filters or add a new product.
+                  </td>
+                </tr>
               )}
-              {products.map(p => {
+              {filteredProducts.map(p => {
                 const margin = p.margin_pct
                 return (
                   <tr key={p.id}>
-                    <td><strong>{p.name}</strong></td>
-                    <td><span style={{ background: '#E2E8F0', padding: '2px 8px', borderRadius: 4, fontSize: 12 }}>{p.category}</span></td>
-                    <td style={{ fontWeight: 600 }}>{fmt(p.sell_price)}</td>
-                    <td style={{ color: p.cost_price ? '#334155' : 'var(--error)' }}>
-                      {p.cost_price ? fmt(p.cost_price) : 'Missing'}
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--heading)' }}>{p.name}</div>
+                    </td>
+                    <td>
+                      <span style={{
+                        background: 'var(--surface)',
+                        color: 'var(--body)',
+                        padding: '3px 9px',
+                        borderRadius: 6,
+                        fontSize: 11.5,
+                        fontWeight: 500,
+                        textTransform: 'capitalize'
+                      }}>
+                        {p.category}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 650 }}>{fmt(p.sell_price)}</td>
+                    <td style={{ color: p.cost_price ? 'var(--body)' : 'var(--error)', fontWeight: p.cost_price ? 500 : 600 }}>
+                      {p.cost_price ? fmt(p.cost_price) : 'Missing Cost'}
                     </td>
                     <td>
                       {margin != null ? (
                         <span style={{
                           fontWeight: 700,
+                          fontSize: 13,
                           color: margin >= 15 ? 'var(--success)' : margin >= 12 ? 'var(--warning)' : 'var(--error)'
                         }}>
                           {pct(margin)}
@@ -123,7 +187,7 @@ export default function Products() {
                       ) : '—'}
                     </td>
                     <td>
-                      <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>
+                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>
                         {p.cost_source === 'bill' ? '🧾 Bill OCR' : '✍️ Manual'}
                       </span>
                     </td>
@@ -132,9 +196,21 @@ export default function Products() {
                         {p.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td>
-                      <button className="btn btn-ghost btn-sm" style={{ marginRight: 6 }} onClick={() => handleOpenEdit(p)}>Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p.id)}>Deactivate</button>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ marginRight: 6 }}
+                        onClick={() => handleOpenEdit(p)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ background: '#FEE2E2', color: '#B91C1C', border: 'none' }}
+                        onClick={() => handleDelete(p.id)}
+                      >
+                        Deactivate
+                      </button>
                     </td>
                   </tr>
                 )
@@ -146,7 +222,7 @@ export default function Products() {
 
       {modalOpen && (
         <Modal
-          title={editing ? "Edit Product" : "Add Product"}
+          title={editing ? "Edit Product Details" : "Add New Product"}
           onClose={() => setModalOpen(false)}
         >
           <form onSubmit={handleSubmit}>
@@ -157,7 +233,7 @@ export default function Products() {
                 required
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Parle-G 100g"
+                placeholder="e.g. Parle-G 100g, Amul Butter 500g"
               />
             </div>
             <div className="form-group">
@@ -188,6 +264,7 @@ export default function Products() {
                   className="form-input"
                   value={form.sell_price}
                   onChange={e => setForm({ ...form, sell_price: e.target.value })}
+                  placeholder="Retail price"
                 />
               </div>
               <div className="form-group">
@@ -199,13 +276,17 @@ export default function Products() {
                   className="form-input"
                   value={form.cost_price}
                   onChange={e => setForm({ ...form, cost_price: e.target.value })}
-                  placeholder="Wholesale cost"
+                  placeholder="Wholesale unit cost"
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{editing ? 'Update' : 'Save Product'}</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                {editing ? 'Update Product' : 'Save Product'}
+              </button>
             </div>
           </form>
         </Modal>
@@ -213,4 +294,3 @@ export default function Products() {
     </div>
   )
 }
-

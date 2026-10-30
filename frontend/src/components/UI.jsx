@@ -1,7 +1,7 @@
 import React from 'react'
 
-export function Spinner() {
-  return <div className="spinner" />
+export function Spinner({ size = 20 }) {
+  return <div className="spinner" style={{ width: size, height: size }} />
 }
 
 export function Loading({ text = 'Loading...' }) {
@@ -23,6 +23,7 @@ export function Badge({ status }) {
     ok: 'badge-ok', caution: 'badge-caution', blocked: 'badge-blocked',
     pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected',
     modified: 'badge-modified', synthetic: 'badge-synthetic',
+    high: 'badge-ok', medium: 'badge-caution', low: 'badge-blocked',
   }
   return <span className={`badge ${map[status] || 'badge-pending'}`}>{status}</span>
 }
@@ -42,10 +43,17 @@ export function SyntheticBanner() {
 export function Modal({ title, children, onClose, footer }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ padding: '4px 10px', fontSize: 16, lineHeight: 1 }}
+          >
+            ✕
+          </button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
@@ -64,4 +72,3 @@ export function StatCard({ label, value, sub, accent }) {
     </div>
   )
 }
-

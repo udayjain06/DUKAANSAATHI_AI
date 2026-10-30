@@ -57,7 +57,6 @@ export default function Payment() {
     }
   }
 
-  // Trigger form submission to Paytm staging gateway
   const handleProceedToPaytmGateway = () => {
     if (!paytmPayload) return
     const form = document.createElement('form')
@@ -85,26 +84,27 @@ export default function Payment() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, color: 'var(--heading)' }}>DukaanSaathi Pro — Subscription & Paytm Gateway</h2>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+      <div style={{ marginBottom: 22 }}>
+        <h2 style={{ fontSize: 20, color: 'var(--heading)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          DukaanSaathi Pro — Subscription & Paytm Gateway
+        </h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
           Official server-side Paytm Payment Gateway integration with checksum verification & status enquiry.
         </p>
       </div>
 
-      {/* Configuration Status Notice */}
       {!isConfigured ? (
         <div className="alert alert-warning" style={{ marginBottom: 24 }}>
           <strong>⚠️ Paytm Merchant Credentials Required:</strong><br />
-          To process live/staging payments, provide your <code>PAYTM_MID</code> and <code>PAYTM_MERCHANT_KEY</code> in the backend <code>.env</code> file.
-          <div style={{ marginTop: 6, fontSize: 13 }}>
-            Get your test credentials from: <a href="https://business.paytm.com/" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--teal-dark)' }}>https://business.paytm.com/</a>.
-            The backend architecture, checksum generator, callback webhook, and verification routes are fully implemented and ready.
+          To process live or staging payments, supply your <code>PAYTM_MID</code> and <code>PAYTM_MERCHANT_KEY</code> in the backend <code>.env</code> file.
+          <div style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.5 }}>
+            Obtain test credentials from: <a href="https://business.paytm.com/" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--teal-dark)', fontWeight: 600 }}>https://business.paytm.com/</a>.
+            The backend architecture, HMAC checksum generation, callback webhook, and verification routes are fully built and ready.
           </div>
         </div>
       ) : (
         <div className="alert alert-success" style={{ marginBottom: 24 }}>
-          <strong>✓ Paytm Gateway Configured:</strong> Environment: <code>{plansData?.env || 'staging'}</code>. Ready to process transactions.
+          <strong>✓ Paytm Gateway Active:</strong> Environment: <code>{plansData?.env || 'staging'}</code>. Ready to process real transactions.
         </div>
       )}
 
@@ -121,24 +121,28 @@ export default function Payment() {
               style={{
                 border: isSelected ? '2px solid var(--teal)' : '1px solid var(--border)',
                 cursor: 'pointer',
-                position: 'relative'
+                position: 'relative',
+                transform: isSelected ? 'translateY(-2px)' : 'none',
+                boxShadow: isSelected ? 'var(--shadow-md)' : 'var(--shadow)',
+                transition: 'all var(--duration) var(--ease-smooth)'
               }}
               onClick={() => setSelectedPlan(p.id)}
             >
               {isSelected && (
                 <div style={{
-                  position: 'absolute', top: -10, right: 16,
+                  position: 'absolute', top: -10, right: 18,
                   background: 'var(--teal)', color: '#fff',
-                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4
+                  fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-full)',
+                  letterSpacing: '0.04em'
                 }}>
-                  Selected
+                  RECOMMENDED
                 </div>
               )}
               <div className="card-header">
                 <h3>{p.name}</h3>
               </div>
               <div className="card-body">
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--heading)', marginBottom: 8 }}>
+                <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--heading)', marginBottom: 8, letterSpacing: '-0.02em' }}>
                   {fmt(p.amount)}
                 </div>
                 <ul style={{ paddingLeft: 18, fontSize: 13, color: 'var(--body)', lineHeight: 1.8 }}>
@@ -150,7 +154,7 @@ export default function Payment() {
                 </ul>
                 <button
                   className={`btn ${isSelected ? 'btn-primary' : 'btn-ghost'}`}
-                  style={{ width: '100%', marginTop: 16 }}
+                  style={{ width: '100%', marginTop: 20 }}
                   disabled={initiating}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -180,21 +184,21 @@ export default function Payment() {
           }
         >
           <div>
-            <div className="alert alert-info" style={{ fontSize: 13 }}>
+            <div className="alert alert-info" style={{ fontSize: 13, marginBottom: 14 }}>
               Backend generated order #{paytmPayload.order_id} with secure HMAC-SHA256 checksum signature.
             </div>
-            <div style={{ background: 'var(--bg)', padding: 14, borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
-              <div><strong>Plan:</strong> {paytmPayload.plan}</div>
-              <div><strong>Amount:</strong> {fmt(paytmPayload.amount)}</div>
-              <div><strong>Environment:</strong> {paytmPayload.env}</div>
-              <div><strong>Gateway Target:</strong> <code style={{ fontSize: 11 }}>{paytmPayload.txn_url}</code></div>
-              <div style={{ marginTop: 8 }}><strong>Checksum (HMAC):</strong></div>
-              <code style={{ fontSize: 11, wordBreak: 'break-all', display: 'block', background: '#E2E8F0', padding: 6, borderRadius: 4 }}>
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 'var(--radius-sm)', fontSize: 13, marginBottom: 16 }}>
+              <div style={{ marginBottom: 4 }}><strong>Plan:</strong> {paytmPayload.plan}</div>
+              <div style={{ marginBottom: 4 }}><strong>Amount:</strong> {fmt(paytmPayload.amount)}</div>
+              <div style={{ marginBottom: 4 }}><strong>Environment:</strong> {paytmPayload.env}</div>
+              <div style={{ marginBottom: 8 }}><strong>Gateway Target:</strong> <code style={{ fontSize: 11 }}>{paytmPayload.txn_url}</code></div>
+              <div><strong>Checksum (HMAC):</strong></div>
+              <code style={{ fontSize: 11, wordBreak: 'break-all', display: 'block', background: '#E2E8F0', padding: 8, borderRadius: 6, marginTop: 4 }}>
                 {paytmPayload.paytm_params?.CHECKSUMHASH}
               </code>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Clicking below opens the official Paytm staging checkout. After payment, Paytm sends server-to-server webhook callback to <code>/api/payment/callback</code>.
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+              Proceeding opens the official Paytm staging checkout. After payment, Paytm sends server-to-server webhook callback to <code>/api/payment/callback</code>.
             </p>
           </div>
         </Modal>
@@ -206,15 +210,16 @@ export default function Payment() {
           <h3>🔍 Server-Side Payment Status Verification</h3>
         </div>
         <div className="card-body">
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
             Never trusts client claims. Verifies directly against database post-callback & Paytm status enquiry API.
           </p>
-          <div style={{ display: 'flex', gap: 10, maxWidth: 500, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 10, maxWidth: 500, marginBottom: 18, flexWrap: 'wrap' }}>
             <input
               className="form-input"
               placeholder="Enter Order ID (e.g. DS_123456...)"
               value={checkOrderId}
               onChange={e => setCheckOrderId(e.target.value)}
+              style={{ flex: 1, minWidth: 200 }}
             />
             <button
               className="btn btn-primary"
@@ -226,12 +231,12 @@ export default function Payment() {
           </div>
 
           {orderStatus && (
-            <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <strong>Order #{orderStatus.order_id}</strong>
+            <div style={{ background: 'var(--surface)', padding: 18, borderRadius: 'var(--radius-sm)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <strong style={{ fontSize: 15, color: 'var(--heading)' }}>Order #{orderStatus.order_id}</strong>
                 <Badge status={orderStatus.status === 'SUCCESS' ? 'ok' : orderStatus.status === 'FAILED' ? 'blocked' : 'caution'} />
               </div>
-              <div style={{ fontSize: 13 }}>
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>
                 <div><strong>Amount:</strong> {fmt(orderStatus.amount)}</div>
                 <div><strong>Plan:</strong> {orderStatus.plan}</div>
                 <div><strong>Paytm Txn ID:</strong> {orderStatus.txn_id || 'Pending Gateway Completion'}</div>
@@ -245,4 +250,3 @@ export default function Payment() {
     </div>
   )
 }
-

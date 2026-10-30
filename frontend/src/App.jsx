@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import SalesAnalysis from './pages/SalesAnalysis'
@@ -25,18 +25,19 @@ export default function App() {
               <button
                 className="btn btn-ghost btn-sm sidebar-toggle"
                 onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
               >
                 ☰
               </button>
               <h2>DukaanSaathi AI</h2>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <a href="/recommendations" className="btn btn-outline btn-sm">
-                💡 View Offers
-              </a>
-              <a href="/chat" className="btn btn-primary btn-sm">
-                🤖 AI Chat
-              </a>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Link to="/recommendations" className="btn btn-outline btn-sm">
+                💡 Offers
+              </Link>
+              <Link to="/chat" className="btn btn-primary btn-sm">
+                🤖 Chat
+              </Link>
             </div>
           </header>
           <div className="page-body">
@@ -58,4 +59,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-
