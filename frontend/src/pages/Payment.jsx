@@ -131,7 +131,7 @@ export default function Payment() {
               {isSelected && (
                 <div style={{
                   position: 'absolute', top: -10, right: 18,
-                  background: 'var(--teal)', color: '#fff',
+                  background: 'var(--accent)', color: 'var(--accent-ink)',
                   fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-full)',
                   letterSpacing: '0.04em'
                 }}>
@@ -193,7 +193,7 @@ export default function Payment() {
               <div style={{ marginBottom: 4 }}><strong>Environment:</strong> {paytmPayload.env}</div>
               <div style={{ marginBottom: 8 }}><strong>Gateway Target:</strong> <code style={{ fontSize: 11 }}>{paytmPayload.txn_url}</code></div>
               <div><strong>Checksum (HMAC):</strong></div>
-              <code style={{ fontSize: 11, wordBreak: 'break-all', display: 'block', background: '#E2E8F0', padding: 8, borderRadius: 6, marginTop: 4 }}>
+              <code style={{ fontSize: 11, wordBreak: 'break-all', display: 'block', background: 'var(--surface-2)', padding: 10, borderRadius: 6, marginTop: 4 }}>
                 {paytmPayload.paytm_params?.CHECKSUMHASH}
               </code>
             </div>

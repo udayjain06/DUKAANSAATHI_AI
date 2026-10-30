@@ -164,7 +164,7 @@ export default function Products() {
                         color: 'var(--body)',
                         padding: '3px 9px',
                         borderRadius: 6,
-                        fontSize: 11.5,
+                        fontSize: 12.5,
                         fontWeight: 500,
                         textTransform: 'capitalize'
                       }}>
@@ -206,7 +206,7 @@ export default function Products() {
                       </button>
                       <button
                         className="btn btn-danger btn-sm"
-                        style={{ background: '#FEE2E2', color: '#B91C1C', border: 'none' }}
+                        style={{ background: 'var(--error-soft)', color: 'var(--error)', border: 'none' }}
                         onClick={() => handleDelete(p.id)}
                       >
                         Deactivate

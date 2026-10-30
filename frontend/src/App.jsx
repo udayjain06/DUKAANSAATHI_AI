@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import Sidebar from './components/Sidebar'
+import React, { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import TopNav from './components/TopNav'
+import { Loader, Cursor, Background, ScrollProgress } from './components/Effects'
 import Dashboard from './pages/Dashboard'
 import SalesAnalysis from './pages/SalesAnalysis'
 import Products from './pages/Products'
@@ -12,49 +13,50 @@ import Chat from './pages/Chat'
 import Payment from './pages/Payment'
 import Setup from './pages/Setup'
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'auto' }) }, [pathname])
+  return null
+}
+
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showLoader, setShowLoader] = useState(true)
+  const [ready, setReady] = useState(false)
 
   return (
     <BrowserRouter>
-      <div className="app-layout">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Background />
+      <Cursor />
+      <ScrollProgress />
+      {showLoader && (
+        <Loader onReveal={() => setReady(true)} onDone={() => setShowLoader(false)} />
+      )}
+
+      <div className="app-shell">
+        <ScrollToTop />
+        <TopNav />
         <main className="main-content">
-          <header className="page-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                className="btn btn-ghost btn-sm sidebar-toggle"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Open menu"
-              >
-                ☰
-              </button>
-              <h2>DukaanSaathi AI</h2>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Link to="/recommendations" className="btn btn-outline btn-sm">
-                💡 Offers
-              </Link>
-              <Link to="/chat" className="btn btn-primary btn-sm">
-                🤖 Chat
-              </Link>
-            </div>
-          </header>
           <div className="page-body">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/sales" element={<SalesAnalysis />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/bills" element={<Bills />} />
-              <Route path="/recommendations" element={<Recommendations />} />
-              <Route path="/offers" element={<Offers />} />
-              <Route path="/margin" element={<MarginCalculator />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/payment" element={<Payment />} />
-              <Route path="/setup" element={<Setup />} />
-            </Routes>
+            {ready && (
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/sales" element={<SalesAnalysis />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/bills" element={<Bills />} />
+                <Route path="/recommendations" element={<Recommendations />} />
+                <Route path="/offers" element={<Offers />} />
+                <Route path="/margin" element={<MarginCalculator />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/payment" element={<Payment />} />
+                <Route path="/setup" element={<Setup />} />
+              </Routes>
+            )}
           </div>
         </main>
+        <footer className="site-footer">
+          <span>DukaanSaathi AI v1.0</span>
+          <span>Paytm Build for India Hackathon</span>
+        </footer>
       </div>
     </BrowserRouter>
   )

@@ -4,8 +4,8 @@
   "description": "AI-powered merchant analytics for Indian small businesses",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F8FAFC",
-  "theme_color": "#0D9488",
+  "background_color": "#050506",
+  "theme_color": "#050506",
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]

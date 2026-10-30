@@ -87,7 +87,7 @@ export default function Chat() {
         {/* Messages */}
         <div ref={scrollRef} style={{
           flex: 1, padding: 22, overflowY: 'auto',
-          background: 'linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)'
+          background: 'var(--bg)'
         }}>
           {messages.map((m, idx) => (
             <div
@@ -100,9 +100,9 @@ export default function Chat() {
             >
               <div className={`chat-bubble ${m.sender}`}>
                 <div style={{
-                  fontSize: 10.5, fontWeight: 650, marginBottom: 5,
+                  fontSize: 12, fontWeight: 700, marginBottom: 6,
                   display: 'flex', justifyContent: 'space-between', gap: 14,
-                  color: m.sender === 'user' ? 'rgba(255,255,255,0.7)' : 'var(--teal-dark)',
+                  color: m.sender === 'user' ? 'rgba(255,255,255,0.7)' : 'var(--accent)',
                   letterSpacing: '0.02em',
                 }}>
                   <span>{m.sender === 'user' ? 'You' : '🤖 DukaanSaathi AI'}</span>

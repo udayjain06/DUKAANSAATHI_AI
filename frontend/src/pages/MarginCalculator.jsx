@@ -206,7 +206,7 @@ export default function MarginCalculator() {
                     <strong>⛔ Status: Blocked</strong><br />
                     Post-discount margin is below your safety threshold ({minMarginPct}%). Selling at this discount requires excessive sales volume (+{pct(calcResult.required_volume_uplift_pct)}) just to break even on profit!
                     {calcResult.alternative && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(185,28,28,0.2)' }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,107,107,0.25)' }}>
                         <strong>✨ Recommended Safe Alternative:</strong><br />
                         {calcResult.alternative.message}
                         <div style={{ marginTop: 8 }}>

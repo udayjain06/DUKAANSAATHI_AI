@@ -6,15 +6,15 @@ import {
 import api, { fmt, pct } from '../api'
 import { Loading, ErrorMsg, StatCard, Badge, SyntheticBanner, DataLabel } from '../components/UI'
 
-const TEAL = '#0D9488'
-const RED = '#B91C1C'
+const TEAL = '#C8F560'
+const RED = '#FF6B6B'
 const WEEKDAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
 const chartTooltipStyle = {
-  background: '#ffffff',
-  border: '1px solid #E2E8F0',
+  background: '#17171B',
+  border: '1px solid #2C2C34',
   borderRadius: 10,
-  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  boxShadow: '0 12px 32px rgba(0,0,0,0.6)',
   fontSize: 13,
   padding: '8px 12px',
 }
@@ -75,7 +75,7 @@ export default function SalesAnalysis() {
               className={`btn btn-sm ${weeks === w ? 'btn-primary' : 'btn-ghost'}`}
               style={{
                 borderRadius: 7,
-                boxShadow: weeks === w ? '0 1px 3px rgba(13,148,136,0.25)' : 'none',
+                boxShadow: weeks === w ? '0 1px 3px rgba(200,245,96,0.25)' : 'none',
                 border: 'none',
               }}
               onClick={() => setWeeks(w)}
@@ -107,11 +107,11 @@ export default function SalesAnalysis() {
                   <stop offset="95%" stopColor={TEAL} stopOpacity={0.01} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#22222A" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8B8B97' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#8B8B97' }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
               <Tooltip formatter={v => fmt(v)} contentStyle={chartTooltipStyle} />
-              <Area type="monotone" dataKey="revenue" stroke={TEAL} strokeWidth={2.5} fill="url(#salesGrad)" dot={{ r: 4, fill: TEAL, strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, fill: TEAL, stroke: '#fff', strokeWidth: 2 }} />
+              <Area type="monotone" dataKey="revenue" stroke={TEAL} strokeWidth={2.5} fill="url(#salesGrad)" dot={{ r: 4, fill: TEAL, strokeWidth: 2, stroke: '#050506' }} activeDot={{ r: 6, fill: TEAL, stroke: '#050506', strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -124,9 +124,9 @@ export default function SalesAnalysis() {
           <div className="card-body" style={{ paddingRight: 10 }}>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={weekdayData} barSize={30}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#22222A" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8B8B97' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#8B8B97' }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
                 <Tooltip formatter={v => fmt(v)} labelFormatter={l => weekdayData.find(d => d.name === l)?.full || l} contentStyle={chartTooltipStyle} />
                 <Bar dataKey="avg" radius={[6,6,0,0]}>
                   {weekdayData.map((e, i) => (

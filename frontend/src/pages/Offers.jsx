@@ -92,17 +92,17 @@ export default function Offers() {
                 <div className="card-body">
                   {/* WhatsApp Status Creative Preview */}
                   <div style={{
-                    background: 'linear-gradient(135deg, #075E54 0%, #128C7E 100%)',
+                    background: 'linear-gradient(135deg, #3B2FA8 0%, #7B6CF6 100%)',
                     color: '#FFFFFF',
                     padding: 16,
                     borderRadius: 12,
                     marginBottom: 16,
-                    boxShadow: '0 4px 14px rgba(7,94,84,0.22)',
+                    boxShadow: '0 10px 28px rgba(123,108,246,0.35)',
                     transition: 'transform var(--duration) var(--ease-smooth)'
                   }}>
                     <div style={{
-                      fontSize: 11,
-                      color: '#A7F3D0',
+                      fontSize: 12,
+                      color: '#C8F560',
                       fontWeight: 650,
                       marginBottom: 8,
                       display: 'flex',
@@ -112,7 +112,7 @@ export default function Offers() {
                       <span>📱 WHATSAPP STATUS READY</span>
                       <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: 10 }}>LIVE</span>
                     </div>
-                    <div style={{ fontSize: 13.5, whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 15, whiteSpace: 'pre-line', lineHeight: 1.5 }}>
                       {copy.whatsapp || 'Special Offer Available Today! Visit store to avail.'}
                     </div>
                   </div>
@@ -188,8 +188,8 @@ export default function Offers() {
               margin: '0 auto 16px',
               width: 140,
               height: 140,
-              background: '#F8FAFC',
-              border: '2px solid #0F172A',
+              background: '#FFFFFF', color: '#0A0A0A',
+              border: '3px solid var(--accent)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -198,7 +198,7 @@ export default function Offers() {
               boxShadow: 'var(--shadow-xs)'
             }}>
               <span style={{ fontSize: 36 }}>📱</span>
-              <span style={{ fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: '0.04em' }}>PAYTM QR SCAN</span>
+              <span style={{ fontSize: 11, fontWeight: 700, marginTop: 4, letterSpacing: '0.04em' }}>PAYTM QR SCAN</span>
             </div>
 
             <button className="btn btn-success btn-sm" style={{ pointerEvents: 'none' }}>
