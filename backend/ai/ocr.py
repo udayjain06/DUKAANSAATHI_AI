@@ -121,9 +121,6 @@ def _group_rows(words, y_tolerance: float | None = None) -> list[str]:
     """Merge words that share a visual line into single text rows."""
     if not words:
         return []
-    heights = []
-    for _text, _score, (_y, _x) in words:
-        pass
     # Estimate line height from the vertical spread of word centres
     ys = sorted(w[2][0] for w in words)
     gaps = [b - a for a, b in zip(ys, ys[1:]) if b - a > 1]
@@ -131,21 +128,21 @@ def _group_rows(words, y_tolerance: float | None = None) -> list[str]:
     tolerance = max(6.0, min(tolerance, 28.0))
 
     ordered = sorted(words, key=lambda w: (w[2][0], w[2][1]))
-    rows: list[list[tuple[float, str, float]]] = []
-    for text, score, (y, x) in ordered:
+    rows: list[list[tuple[float, float, str]]] = []
+    for text, _score, (y, x) in ordered:
         placed = False
         for row in rows:
             if abs(row[0][0] - y) <= tolerance:
-                row.append((y, text, score))
+                row.append((y, x, text))
                 placed = True
                 break
         if not placed:
-            rows.append([(y, text, score)])
+            rows.append([(y, x, text)])
 
     lines = []
     for row in rows:
-        row.sort(key=lambda item: item[1] and 0 or 0)  # keep insertion order
-        text = " ".join(part[1] for part in row).strip()
+        row.sort(key=lambda item: item[1])  # left-to-right within the line
+        text = " ".join(part[2] for part in row).strip()
         if text:
             lines.append(text)
     return lines

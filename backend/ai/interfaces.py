@@ -156,34 +156,17 @@ def ai_chat(message: str, lang: str, context: dict = None) -> str:
     return responses.get(intent, responses["general_query"])
 
 
-def ai_extract_bill_items(image_bytes: bytes) -> list[dict]:
-    """Extract items from a bill photo. Falls back to empty list."""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if api_key and api_key != "your_anthropic_api_key_here":
-        try:
-            import anthropic, base64, json
-            client = anthropic.Anthropic(api_key=api_key)
-            b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
-            msg = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=500,
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
-                        {"type": "text", "text": (
-                            "Extract all items from this wholesale bill/invoice. "
-                            "Return JSON array: [{\"name\": \"...\", \"cost_price\": 0.0, \"quantity\": 1, \"unit\": \"unit\"}]. "
-                            "Only return the JSON array, nothing else."
-                        )},
-                    ],
-                }],
-            )
-            text = msg.content[0].text.strip()
-            start = text.find("[")
-            if start >= 0:
-                return json.loads(text[start:])
-        except Exception:
-            pass
-    return []
+def ai_extract_bill_items(
+    image_bytes: bytes,
+    filename: str | None = None,
+    content_type: str | None = None,
+) -> list[dict]:
+    """Extract line items from a bill image / PDF using the local OCR pipeline."""
+    try:
+        from ai.ocr import extract_bill
+
+        result = extract_bill(image_bytes, filename=filename, content_type=content_type)
+        return result.get("items", [])
+    except Exception:
+        return []
 

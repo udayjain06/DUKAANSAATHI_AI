@@ -1,0 +1,24 @@
+{
+  "engine_version": "3.0",
+  "status": "ready",
+  "trained_at": "2026-10-31T06:02:31",
+  "corpus_fingerprint": "c3ca1d56f3c76070",
+  "corpus_size": 181,
+  "categories": [
+    "Entertainment",
+    "Food",
+    "Groceries",
+    "Healthcare",
+    "Rent",
+    "Salary",
+    "Shopping",
+    "Supplies",
+    "Travel",
+    "Utilities"
+  ],
+  "categorizer_accuracy_pct": 62.2,
+  "predictor_mae": 401.92,
+  "predictor_mape_pct": 8.6,
+  "anomaly_threshold": 10000.0,
+  "db_samples": 0
+}
