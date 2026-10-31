@@ -187,5 +187,125 @@ def run_seed(db: Session, shop_type: str = "kirana"):
     merchant = seed_merchant(db, shop_type=shop_type, merchant_id=1)
     products = seed_products(db, merchant)
     seed_sales(db, merchant, products, weeks=8)
+    seed_ml_training_samples(db)
+    seed_demo_transactions(db, merchant)
     return merchant
+
+
+# ---------------------------------------------------------------------------
+# ML training corpus + realistic demo ledger
+# ---------------------------------------------------------------------------
+
+def seed_ml_training_samples(db: Session):
+    """Copy the curated real-life corpus into `ml_training_sample`. Idempotent."""
+    from db.models import MLTrainingSample
+    from engine.training_data import get_training_samples
+
+    try:
+        existing = db.query(MLTrainingSample).count()
+    except Exception:
+        return 0
+    if existing > 0:
+        return existing
+
+    rows = [
+        MLTrainingSample(
+            description=row["description"],
+            category=row["category"],
+            amount=row["amount"],
+            source="seed",
+        )
+        for row in get_training_samples()
+    ]
+    db.add_all(rows)
+    db.commit()
+    return len(rows)
+
+
+# Realistic merchant ledger for the demo account: two months of income and
+# expenses so the dashboard, ML forecasts and chat all have real data.
+DEMO_LEDGER = [
+    # (days_ago, type, description, amount)
+    (0, "expense", "tea and snacks for shop staff", 240.0),
+    (1, "expense", "petrol bike for delivery", 350.0),
+    (1, "income", "counter sales collection", 4850.0),
+    (2, "expense", "Amul milk and curd supply", 1240.0),
+    (2, "income", "UPI settlement received", 3620.0),
+    (3, "expense", "polythene carry bags 5kg bundle", 480.0),
+    (3, "income", "counter sales collection", 4120.0),
+    (4, "expense", "wholesale atta and rice bori", 2870.0),
+    (4, "income", "Paytm QR collection daily", 5240.0),
+    (5, "expense", "shop electricity bill", 2450.0),
+    (5, "income", "counter sales collection", 3980.0),
+    (6, "expense", "tempo transport from mandi", 1800.0),
+    (6, "income", "Sunday weekend sales", 6120.0),
+    (8, "expense", "mobile recharge prepaid", 299.0),
+    (9, "expense", "billing roll thermal paper", 360.0),
+    (9, "income", "counter sales collection", 4410.0),
+    (11, "expense", "staff salary monthly payment", 15000.0),
+    (11, "income", "wholesale customer payment received", 22000.0),
+    (13, "expense", "shop rent monthly", 12000.0),
+    (15, "expense", "gst filing accountant fee", 1500.0),
+    (16, "income", "counter sales collection", 4680.0),
+    (19, "expense", "mustard oil 5 litre jar", 720.0),
+    (22, "expense", "water tanker supply", 600.0),
+    (24, "income", "UPI settlement received", 7420.0),
+    (26, "expense", "sugar 50kg bori mill rate", 2250.0),
+    (29, "expense", "broadband internet recharge", 799.0),
+    (31, "income", "counter sales collection", 5120.0),
+    (34, "expense", "LED bulbs and shop repairs", 640.0),
+    (38, "expense", "festival decoration lights", 950.0),
+    (41, "income", "festival week sales", 9210.0),
+    (45, "expense", "loan EMI business", 7800.0),
+    (49, "expense", "shop insurance premium", 2400.0),
+    (52, "income", "counter sales collection", 4560.0),
+    (58, "expense", "display rack purchase", 2600.0),
+    (61, "income", "UPI settlement received", 6840.0),
+]
+
+
+def seed_demo_transactions(db: Session, merchant: Merchant):
+    """Add a realistic 2-month ledger for the demo account. Idempotent."""
+    from db.models import Transaction
+    from engine.ml_engine import categorize_expense
+
+    user_id = merchant.user_id
+    if not user_id:
+        return 0
+    existing = db.query(Transaction).filter(Transaction.user_id == user_id).count()
+    if existing > 0:
+        return existing
+
+    today = datetime.date.today()
+    created = 0
+    for days_ago, txn_type, description, amount in DEMO_LEDGER:
+        db.add(Transaction(
+            id=f"tx_demo_{created + 1:03d}",
+            user_id=user_id,
+            type=txn_type,
+            category="Salary" if txn_type == "income" else categorize_expense(description),
+            amount=float(amount),
+            description=description,
+            date=today - datetime.timedelta(days=days_ago),
+            is_anomaly=amount >= 15000,
+        ))
+        created += 1
+    db.commit()
+    return created
+
+
+def ensure_demo_data(db: Session):
+    """Idempotently make sure demo data, the ML corpus and demo ledger exist."""
+    from db.models import SalesDaily
+
+    if db.query(SalesDaily).count() == 0:
+        run_seed(db, shop_type="kirana")
+        return
+
+    merchant = db.query(Merchant).filter(Merchant.id == 1).first()
+    if not merchant:
+        merchant = seed_merchant(db, shop_type="kirana", merchant_id=1)
+    seed_ml_training_samples(db)
+    seed_demo_transactions(db, merchant)
+
 

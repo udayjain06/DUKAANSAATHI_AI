@@ -25,7 +25,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.ensemble import IsolationForest
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.metrics import accuracy_score, mean_absolute_error
 from sklearn.model_selection import train_test_split
 
@@ -33,7 +33,7 @@ from engine.training_data import REAL_LIFE_SAMPLES, DAILY_SALES_SERIES
 
 logger = logging.getLogger(__name__)
 
-ENGINE_VERSION = "3.0"
+ENGINE_VERSION = "3.1"
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 CATEGORIZER_PATH = os.path.join(MODELS_DIR, "categorizer.joblib")
@@ -252,12 +252,19 @@ def train_models(samples: list | None = None) -> dict:
     df = pd.DataFrame(rows, columns=["description", "category", "amount"])
     df = df[df["description"].str.len() > 0].reset_index(drop=True)
 
-    # 1. Expense Categorizer (NLP: TF-IDF word + char n-grams -> LogisticRegression)
-    clf_pipeline = Pipeline([
-        ("tfidf", TfidfVectorizer(ngram_range=(1, 2), min_df=1, lowercase=True,
-                                  sublinear_tf=True)),
-        ("clf", LogisticRegression(C=4.0, max_iter=1000, random_state=42)),
-    ])
+    # 1. Expense Categorizer (TF-IDF word + char n-grams -> LogisticRegression)
+    def _make_classifier_pipeline() -> Pipeline:
+        return Pipeline([
+            ("features", FeatureUnion([
+                ("word", TfidfVectorizer(ngram_range=(1, 2), min_df=1, lowercase=True,
+                                         sublinear_tf=True)),
+                ("char", TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5),
+                                         min_df=1, lowercase=True, sublinear_tf=True)),
+            ])),
+            ("clf", LogisticRegression(C=10.0, max_iter=1500, random_state=42)),
+        ])
+
+    clf_pipeline = _make_classifier_pipeline()
 
     cat_accuracy = 100.0
     if len(df) >= 40:
@@ -265,11 +272,7 @@ def train_models(samples: list | None = None) -> dict:
             X_tr, X_te, y_tr, y_te = train_test_split(
                 df["description"], df["category"], test_size=0.2, random_state=42
             )
-            probe = Pipeline([
-                ("tfidf", TfidfVectorizer(ngram_range=(1, 2), min_df=1, lowercase=True,
-                                          sublinear_tf=True)),
-                ("clf", LogisticRegression(C=4.0, max_iter=1000, random_state=42)),
-            ])
+            probe = _make_classifier_pipeline()
             probe.fit(X_tr, y_tr)
             cat_accuracy = round(accuracy_score(y_te, probe.predict(X_te)) * 100, 1)
         except Exception as exc:  # pragma: no cover - defensive

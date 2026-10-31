@@ -95,6 +95,19 @@ def run_migrations(target_engine):
                 if "is_demo" not in cols:
                     logger.info("Migrating schema: adding is_demo column to user_profile table...")
                     conn.execute(text("ALTER TABLE user_profile ADD COLUMN is_demo BOOLEAN DEFAULT FALSE"))
+            # Check bill_item table — bill_id links items to their source bill
+            if "bill_item" in tables:
+                cols = [c["name"] for c in inspector.get_columns("bill_item")]
+                if "bill_id" not in cols:
+                    logger.info("Migrating schema: adding bill_id column to bill_item table...")
+                    conn.execute(text("ALTER TABLE bill_item ADD COLUMN bill_id INTEGER"))
+
+            # Check transactions table — is_anomaly flag
+            if "transactions" in tables:
+                cols = [c["name"] for c in inspector.get_columns("transactions")]
+                if "is_anomaly" not in cols:
+                    logger.info("Migrating schema: adding is_anomaly column to transactions table...")
+                    conn.execute(text("ALTER TABLE transactions ADD COLUMN is_anomaly BOOLEAN DEFAULT FALSE"))
     except Exception as exc:
         logger.warning(f"Migration check notice: {exc}")
 

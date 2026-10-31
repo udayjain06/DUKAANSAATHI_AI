@@ -39,17 +39,11 @@ async def lifespan(app: FastAPI):
     try:
         init_db()
         from db.session import SessionLocal
-        from db.models import SalesDaily
         db = SessionLocal()
         try:
-            count = db.query(SalesDaily).count()
-            if count == 0:
-                logger.info("Empty database — seeding demo data...")
-                from engine.seed import run_seed
-                run_seed(db, shop_type="kirana")
-                logger.info("Demo data seeded.")
-            else:
-                logger.info(f"Database already has {count} sales records.")
+            from engine.seed import ensure_demo_data
+            ensure_demo_data(db)
+            logger.info("Startup data check complete (demo seed + ML corpus).")
         finally:
             db.close()
     except Exception as exc:
