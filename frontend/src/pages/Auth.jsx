@@ -48,8 +48,15 @@ export default function Auth() {
         )
       }
     } catch (err) {
+      const status = err.response?.status
       const detail = err.response?.data?.detail
-      if (typeof detail === 'string') {
+      if (!err.response || err.code === 'ERR_NETWORK' || status === 404) {
+        setError(
+          isHindi
+            ? 'सर्वर से संपर्क नहीं हो पा रहा है। कृपया एक मिनट बाद पुनः प्रयास करें।'
+            : 'Cannot reach the server. Please try again in a minute.'
+        )
+      } else if (typeof detail === 'string') {
         setError(detail)
       } else if (Array.isArray(detail)) {
         setError(detail.map(d => d.msg || d).join(', '))
@@ -68,7 +75,16 @@ export default function Auth() {
       await signInDemo()
       nav('/')
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to load demo environment')
+      const status = err.response?.status
+      if (!err.response || err.code === 'ERR_NETWORK' || status === 404) {
+        setError(
+          isHindi
+            ? 'सर्वर से संपर्क नहीं हो पा रहा है। कृपया एक मिनट बाद पुनः प्रयास करें।'
+            : 'Cannot reach the server. Please try again in a minute.'
+        )
+      } else {
+        setError(err.response?.data?.detail || err.message || 'Failed to load demo environment')
+      }
     } finally {
       setDemoLoading(false)
     }

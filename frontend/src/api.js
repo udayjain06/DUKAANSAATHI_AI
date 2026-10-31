@@ -1,12 +1,14 @@
 import axios from 'axios'
 
 // Normalize baseURL so that whether VITE_API_URL is:
-// - not set (defaults to '/api' for Vite dev proxy)
-// - set to 'https://backend.onrender.com' -> automatically appends '/api'
-// - set to 'https://backend.onrender.com/api' -> keeps as is
-const rawBase = import.meta.env.VITE_API_URL || '/api'
-const cleanBase = rawBase.replace(/\/+$/, '')
-const baseURL = cleanBase.endsWith('/api') ? cleanBase : `${cleanBase}/api`
+// - unset or empty -> defaults to '/api' (proxied via Vite in dev or vercel.json in prod)
+// - 'https://backend.onrender.com' -> 'https://backend.onrender.com/api'
+// - 'https://backend.onrender.com/' -> 'https://backend.onrender.com/api'
+// - 'https://backend.onrender.com/api' -> 'https://backend.onrender.com/api'
+// - 'https://backend.onrender.com/api/' -> 'https://backend.onrender.com/api'
+const rawBase = (import.meta.env.VITE_API_URL || '/api').trim()
+const cleanBase = rawBase.replace(/\/+$/, '').replace(/(\/api)+$/, '')
+const baseURL = cleanBase ? `${cleanBase}/api` : '/api'
 
 export const TOKEN_KEY = 'dukaansaathi_auth_token'
 
