@@ -49,7 +49,6 @@ React PWA (Vite) ── REST/JSON ── FastAPI
 │   │   └── main.jsx
 │   ├── package.json
 │   └── .env.example
-├── .github/workflows/ci.yml   backend tests + frontend build
 ├── render.yaml                Render backend deployment
 └── README.md
 ```
@@ -107,9 +106,14 @@ Without `GROQ_API_KEY`, all AI features use deterministic local fallbacks. Witho
 - Database: SQLite locally or Supabase PostgreSQL in production (tables are created automatically on startup).
 - Frontend: Vercel (set `VITE_API_URL` to the Render backend URL).
 
-## CI
+## Quality checks
 
-GitHub Actions runs the backend test suite and a production frontend build on every push and pull request (`.github/workflows/ci.yml`).
+Run these before pushing:
+
+```bash
+cd backend && pytest -q
+cd frontend && npm run build
+```
 
 ## License
 
