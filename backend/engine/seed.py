@@ -272,7 +272,10 @@ def seed_demo_transactions(db: Session, merchant: Merchant):
     user_id = merchant.user_id
     if not user_id:
         return 0
-    existing = db.query(Transaction).filter(Transaction.user_id == user_id).count()
+    existing = db.query(Transaction).filter(
+        Transaction.user_id == user_id,
+        Transaction.id.like("tx_demo_%"),
+    ).count()
     if existing > 0:
         return existing
 
