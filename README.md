@@ -25,18 +25,49 @@ React PWA (Vite) ── REST/JSON ── FastAPI
                                   └── db/      SQLAlchemy models (SQLite / PostgreSQL)
 ```
 
+## Project structure
+
+```
+.
+├── backend/
+│   ├── ai/            Groq client, interfaces, local bill OCR
+│   ├── api/           FastAPI routers (auth, sales, recommendations, offers, payments, users)
+│   ├── core/          JWT security, auth dependencies, shared helpers
+│   ├── db/            SQLAlchemy models, engine/session, Supabase migration
+│   ├── engine/        sales analysis, margin, risk, experiments, seed data, ML
+│   ├── tests/         pytest regression, auth-isolation, payment and ML suites
+│   ├── main.py        FastAPI entrypoint (CORS, startup seed, health)
+│   ├── requirements.txt       runtime dependencies
+│   ├── requirements-dev.txt   runtime + test dependencies
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/  shared UI, navigation, effects
+│   │   ├── context/     auth, language, theme providers
+│   │   ├── pages/       dashboard, sales, recommendations, offers, bills, payment, chat
+│   │   ├── api.js       axios client with JWT interceptor
+│   │   └── main.jsx
+│   ├── package.json
+│   └── .env.example
+├── .github/workflows/ci.yml   backend tests + frontend build
+├── render.yaml                Render backend deployment
+└── README.md
+```
+
 ## Local setup
 
 ### Backend
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env        # set SECRET_KEY; optionally add GROQ_API_KEY / PAYTM_*
 python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 API docs: http://127.0.0.1:8000/docs
+
+Use the **Demo login** button in the app, or `POST /api/auth/demo` for a token.
 
 ### Frontend
 
@@ -76,6 +107,10 @@ Without `GROQ_API_KEY`, all AI features use deterministic local fallbacks. Witho
 - Database: SQLite locally or Supabase PostgreSQL in production (tables are created automatically on startup).
 - Frontend: Vercel (set `VITE_API_URL` to the Render backend URL).
 
+## CI
+
+GitHub Actions runs the backend test suite and a production frontend build on every push and pull request (`.github/workflows/ci.yml`).
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

@@ -80,3 +80,12 @@ pnpm-lock.yaml
 .DS_Store
 Thumbs.db
 
+
+# Local secrets & logs
+.env.local
+.env.*.local
+*.log
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
