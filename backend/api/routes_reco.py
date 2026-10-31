@@ -29,7 +29,10 @@ def create_recommendation(
 ):
     """Generate a new recommendation for the authenticated merchant."""
     lang = merchant.language if merchant else "hi"
-    return build_recommendation(db, merchant.id, lang)
+    result = build_recommendation(db, merchant.id, lang)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
 
 @router.get("")
@@ -105,14 +108,15 @@ def decision(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found")
 
     result = apply_decision(db, rec_id, payload.decision, payload.modified_offer)
+    if "error" in result:
+        status_code = 404 if "not found" in result["error"].lower() else 400
+        raise HTTPException(status_code=status_code, detail=result["error"])
+
     if payload.decision in ("approved", "modified"):
         from api.routes_offer import create_offer_for_merchant
         existing_offer = db.query(Offer).filter(Offer.recommendation_id == rec_id).first()
         if not existing_offer:
-            try:
-                create_offer_for_merchant(rec_id, merchant, db)
-            except Exception:
-                pass
+            create_offer_for_merchant(rec_id, merchant, db)
     return result
 
 

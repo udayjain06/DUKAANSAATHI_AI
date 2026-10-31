@@ -34,13 +34,11 @@ def test_spec_alternative_10pct():
 
 
 def test_caution_zone():
-    """Margin between min and min-3 → caution."""
-    # min_margin=20, after_margin=18 → caution
-    result = check_margin(sell_price=100, cost_price=30, discount_pct=55, min_margin_pct=20)
-    # after_price=45, after_gp=15, after_margin=33.3% → ok actually, let's use a tighter case
-    result2 = check_margin(sell_price=100, cost_price=80, discount_pct=3, min_margin_pct=20)
-    # after_price=97, after_gp=17, margin=17.5% → caution (20-3=17 threshold)
-    assert result2["status"] in ("caution", "blocked")
+    """Margin within 2 points below min_margin is caution."""
+    result = check_margin(sell_price=100, cost_price=81, discount_pct=1, min_margin_pct=20)
+    # after_price=99, after_gp=18, margin=18.18% → caution (20-2=18 threshold)
+    assert result["status"] == "caution"
+    assert result["after_pct"] == pytest.approx(18.18, abs=0.1)
 
 
 def test_zero_discount():

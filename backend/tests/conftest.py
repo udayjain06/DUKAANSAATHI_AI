@@ -8,6 +8,8 @@ import pytest
 # Ensure isolated SQLite is used for all automated tests
 os.environ["DATABASE_URL"] = "sqlite:///./test_dukaansaathi.db"
 os.environ["APP_ENV"] = "testing"
+os.environ["GROQ_API_KEY"] = ""
+os.environ["SUPABASE_JWT_SECRET"] = ""
 
 from db.session import init_db, SessionLocal, engine
 from db.models import Base

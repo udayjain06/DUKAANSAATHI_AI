@@ -1,79 +1,131 @@
 """
-Shared interface contracts between engine and ai modules.
-Phase 0: fake implementations. Member 3 replaces these with Claude API calls.
+Groq-backed AI helpers: explanations, offer copy, chat, and bill OCR.
+
+Every function degrades to a deterministic local fallback when GROQ_API_KEY
+is not configured, so the application never breaks without AI credentials.
 """
 from __future__ import annotations
+import json
 import os
+from typing import Optional
+
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
+
+
+def _api_key() -> str:
+    return os.getenv("GROQ_API_KEY", "").strip()
+
+
+def ai_is_configured() -> bool:
+    key = _api_key()
+    return bool(key) and key not in {"YOUR_GROQ_API_KEY", "your_groq_api_key_here"}
+
+
+def _chat(
+    messages: list[dict],
+    *,
+    model: Optional[str] = None,
+    max_tokens: int = 350,
+    temperature: float = 0.3,
+    json_mode: bool = False,
+) -> Optional[str]:
+    """Call Groq and return text, or None on any failure/missing key."""
+    if not ai_is_configured():
+        return None
+    try:
+        from groq import Groq
+
+        kwargs = {
+            "model": model or os.getenv("GROQ_MODEL", DEFAULT_MODEL),
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+        completion = Groq(api_key=_api_key()).chat.completions.create(**kwargs)
+        return (completion.choices[0].message.content or "").strip()
+    except Exception:
+        return None
+
+
+def _lang_name(lang: str) -> str:
+    return "Hindi" if lang == "hi" else "English"
 
 
 def ai_explain(facts: dict, lang: str) -> str:
-    """Explain a recommendation in hi/en. Falls back to template if Claude unavailable."""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if api_key and api_key != "your_anthropic_api_key_here":
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            lang_name = "Hindi" if lang == "hi" else "English"
-            prompt = (
-                f"You are DukaanSaathi AI assistant. Explain this business recommendation in {lang_name} "
-                f"in 2-3 short sentences for a small shop owner. Keep it simple and actionable.\n"
-                f"Facts: {facts}"
-            )
-            msg = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=200,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            return msg.content[0].text.strip()
-        except Exception:
-            pass
+    """Explain a recommendation in hi/en. Falls back to a template."""
+    text = _chat(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You are DukaanSaathi AI, a business assistant for small Indian shop owners. "
+                    f"Reply in {_lang_name(lang)} in 2-3 short sentences. "
+                    "Use only the supplied facts and never invent numbers."
+                ),
+            },
+            {"role": "user", "content": f"Explain this recommendation: {json.dumps(facts, default=str)}"},
+        ],
+        max_tokens=220,
+    )
+    if text:
+        return text
 
-    # Template fallback
     weak_day = facts.get("weak_day", "Monday")
-    dip_pct = facts.get("dip_pct", 0)
-    max_loss = facts.get("max_loss_inr", 0)
-    units_cap = facts.get("units_cap", "N/A")
-    margin = facts.get("margin_after_pct", 0)
+    dip_pct = facts.get("dip_pct", 0) or 0
+    max_loss = facts.get("max_loss_inr", 0) or 0
+    units_cap = facts.get("units_cap")
+    margin = facts.get("margin_after_pct", 0) or 0
+    cap_text = f"first {units_cap} customers" if units_cap else "a limited number of customers"
 
     if lang == "hi":
         return (
-            f"{weak_day} ko {dip_pct:.1f}% kam bikri hoti hai. "
-            f"Offer de kar is din mein aur customers laao. "
-            f"Sirf {units_cap} customers ke liye—max loss ₹{max_loss}, margin {margin:.1f}% rahega."
+            f"{weak_day} ko bikri {dip_pct:.1f}% kam hoti hai. "
+            f"Offer de kar is din zyada customers laayein. "
+            f"Offer sirf {cap_text} ke liye — maximum loss ₹{max_loss}, margin {margin:.1f}% rahega."
         )
     return (
         f"Sales drop {dip_pct:.1f}% on {weak_day}. "
         f"Run this offer to attract more footfall. "
-        f"Capped at {units_cap} customers — max loss ₹{max_loss}, margin stays {margin:.1f}%."
+        f"Capped at {cap_text} — max loss ₹{max_loss}, margin stays {margin:.1f}%."
     )
 
 
 def ai_make_offer_copy(offer: dict, lang: str) -> dict:
     """Generate WhatsApp / poster copy for an offer."""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
     items = ", ".join(offer.get("items", ["product"]))
     discount = offer.get("discount_pct", 10)
     price = offer.get("bundle_price") or offer.get("discounted_price", "")
 
-    if api_key and api_key != "your_anthropic_api_key_here":
+    text = _chat(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You write short promotional copy for Indian small shops. "
+                    f"Write in {_lang_name(lang)}. Return only JSON with keys "
+                    '"whatsapp", "headline", "cta".'
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Products: {items}; Discount: {discount}%; Price: {price}",
+            },
+        ],
+        max_tokens=220,
+        json_mode=True,
+    )
+    if text:
         try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            lang_name = "Hindi" if lang == "hi" else "English"
-            prompt = (
-                f"Create WhatsApp Status text and a short poster headline for this offer in {lang_name}:\n"
-                f"Products: {items}, Discount: {discount}%, Price: {price}.\n"
-                f"Return JSON: {{\"whatsapp\": \"...\", \"headline\": \"...\", \"cta\": \"...\"}}"
-            )
-            msg = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=200,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            import json
-            text = msg.content[0].text.strip()
             start = text.find("{")
-            return json.loads(text[start:]) if start >= 0 else _template_copy(items, discount, price, lang)
+            data = json.loads(text[start:]) if start >= 0 else {}
+            if data.get("whatsapp") and data.get("headline"):
+                return {
+                    "whatsapp": str(data["whatsapp"]),
+                    "headline": str(data["headline"]),
+                    "cta": str(data.get("cta", "Visit Now")),
+                }
         except Exception:
             pass
 
@@ -83,21 +135,21 @@ def ai_make_offer_copy(offer: dict, lang: str) -> dict:
 def _template_copy(items, discount, price, lang) -> dict:
     if lang == "hi":
         return {
-            "whatsapp": f"🎉 Aaj ka offer: {items} par {discount}% choot!\n"
-                        f"Sirf aaj ke liye ₹{price} mein paao.\nJaldi aao, limited stock! 🛍️",
+            "whatsapp": f"Aaj ka offer: {items} par {discount}% choot!\n"
+                        f"Sirf aaj ke liye ₹{price} mein paayein.\nJaldi aayein, limited stock!",
             "headline": f"{discount}% CHOOT — Sirf Aaj!",
-            "cta": "Abhi Lao",
+            "cta": "Abhi Lein",
         }
     return {
-        "whatsapp": f"🎉 Today's offer: {discount}% off on {items}!\n"
-                    f"Get it for just ₹{price} today only.\nHurry — limited stock! 🛍️",
+        "whatsapp": f"Today's offer: {discount}% off on {items}!\n"
+                    f"Get it for just ₹{price} today only.\nHurry — limited stock!",
         "headline": f"{discount}% OFF — Today Only!",
         "cta": "Grab Now",
     }
 
 
 def ai_extract_intent(message: str) -> dict:
-    """Extract intent from a chat message."""
+    """Extract intent from a chat message (local, deterministic)."""
     message_lower = message.lower()
     if any(w in message_lower for w in ["offer", "discount", "deal"]):
         intent = "get_recommendation"
@@ -105,45 +157,46 @@ def ai_extract_intent(message: str) -> dict:
         intent = "get_sales_summary"
     elif any(w in message_lower for w in ["margin", "profit", "munafa"]):
         intent = "get_margin_info"
-    elif any(w in message_lower for w in ["weak", "slow", "slow day", "kam bikri"]):
+    elif any(w in message_lower for w in ["weak", "slow", "kam bikri"]):
         intent = "get_weak_day"
     else:
         intent = "general_query"
     return {"intent": intent, "confidence": 0.8}
 
 
-def ai_chat(message: str, lang: str, context: dict = None) -> str:
-    """Answer a merchant's question. Falls back to templated response."""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if api_key and api_key != "your_anthropic_api_key_here":
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            lang_name = "Hindi" if lang == "hi" else "English"
-            system = (
-                "You are DukaanSaathi AI, a helpful business assistant for small Indian shop owners. "
-                f"Answer in {lang_name}. Be concise, practical, and encouraging. "
-                "Never invent sales numbers or claim statistical significance. "
-                "If asked about data, say you can only see what the merchant has entered."
-            )
-            msg = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=300,
-                system=system,
-                messages=[{"role": "user", "content": message}],
-            )
-            return msg.content[0].text.strip()
-        except Exception:
-            pass
+def ai_chat(message: str, lang: str, context: Optional[dict] = None) -> str:
+    """Answer a merchant's question. Falls back to a templated response."""
+    context_line = ""
+    if context:
+        context_line = f"\nMerchant data (use only these numbers): {json.dumps(context, default=str)}"
+
+    text = _chat(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You are DukaanSaathi AI, a helpful business assistant for small Indian shop owners. "
+                    f"Answer in {_lang_name(lang)}. Be concise, practical, and encouraging. "
+                    "Never invent sales numbers or claim statistical significance. "
+                    "If asked about data, only use the merchant data supplied."
+                    f"{context_line}"
+                ),
+            },
+            {"role": "user", "content": message},
+        ],
+        max_tokens=320,
+    )
+    if text:
+        return text
 
     intent = ai_extract_intent(message)["intent"]
     if lang == "hi":
         responses = {
-            "get_recommendation": "Apni dukaan ke liye best offer dekhne ke liye 'Recommendation' section mein jaayein.",
+            "get_recommendation": "Apni dukaan ke liye best offer dekhne ke liye 'Recommendations' section mein jaayein.",
             "get_sales_summary": "Apni bikri ka chart dashboard par dekh sakte hain.",
-            "get_margin_info": "Margin calculator mein apne products ka data daalo — ye aapko batayega discount ke baad kitna munafa bachega.",
+            "get_margin_info": "Margin calculator mein apne product ka data daalein — ye discount ke baad bacha munafa batayega.",
             "get_weak_day": "Sabse kam bikri wala din 'Dashboard' par dikhta hai.",
-            "general_query": "Namaste! Main DukaanSaathi AI hun. Apni dukaan ke baare mein kuch bhi poochh sakte hain.",
+            "general_query": "Namaste! Main DukaanSaathi AI hoon. Apni dukaan ke baare mein kuch bhi poochh sakte hain.",
         }
     else:
         responses = {
@@ -169,4 +222,3 @@ def ai_extract_bill_items(
         return result.get("items", [])
     except Exception:
         return []
-

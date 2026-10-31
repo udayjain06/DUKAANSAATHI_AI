@@ -259,7 +259,7 @@ def chat(
             )
         else:
             from ai.interfaces import ai_chat
-            reply = ai_chat(req.message, lang)
+            reply = ai_chat(req.message, lang, shop_context)
 
     # Save AI response
     ai_msg = ChatMessage(

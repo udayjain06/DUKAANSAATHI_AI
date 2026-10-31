@@ -11,7 +11,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dukaansaathi-production-super-secret-key-2026-secure")
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    if os.getenv("APP_ENV", "production").lower() == "production":
+        raise RuntimeError(
+            "SECRET_KEY is not set. Configure a long random SECRET_KEY before running in production."
+        )
+    SECRET_KEY = "dev-only-insecure-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 ITERATIONS = 600_000

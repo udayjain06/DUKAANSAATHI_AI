@@ -117,7 +117,7 @@ def get_sales_summary(db: Session, merchant_id: int, weeks: int = 8) -> dict:
             "txns": int(r["txns"]),
             "days": int(r["days"]),
         }
-        for r in weekly.sort_values("week").to_dict(orient="records")
+        for r in weekly.sort_values("week").tail(weeks).to_dict(orient="records")
     ]
 
     weekday_avg = get_weekday_summary(df)
@@ -134,7 +134,7 @@ def get_sales_summary(db: Session, merchant_id: int, weeks: int = 8) -> dict:
         "avg_daily_revenue": round(float(df["total_amount"].mean()), 2),
         "best_day": best_day,
         "worst_day": worst_day,
-        "data_label": "synthetic" if bool(df["is_synthetic"].all()) else "real",
+        "data_label": "synthetic" if df["is_synthetic"].any() else "real",
     }
 
 

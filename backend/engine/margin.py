@@ -10,8 +10,8 @@ Example from spec:
 
 Status rules:
   ok       : after_margin >= min_margin
-  caution  : after_margin >= min_margin - 3
-  blocked  : after_margin < min_margin - 3
+  caution  : after_margin >= min_margin - 2
+  blocked  : after_margin < min_margin - 2
 """
 from __future__ import annotations
 from typing import Optional
@@ -43,7 +43,7 @@ def check_margin(
         after_gp = after_price - bundle_cost
         after_margin = after_gp / after_price * 100 if after_price > 0 else 0
         required_volume_uplift = (before_gp / after_gp - 1) * 100 if after_gp > 0 else float("inf")
-        status, alt = _status_and_alt(after_margin, min_margin_pct, bundle_price, bundle_cost, discount_pct, is_bundle=True)
+        status, alt = _status_and_alt(after_margin, min_margin_pct, bundle_price, bundle_cost, discount_pct)
         return {
             "before_gp": round(before_gp, 2),
             "after_gp": round(after_gp, 2),
@@ -94,23 +94,20 @@ def _status_and_alt(
     sell_price: float,
     cost_price: float,
     discount_pct: float,
-    is_bundle: bool = False,
 ) -> tuple[str, Optional[dict]]:
-    # If margin is below min_margin, we also suggest safer alternative
-    alt = _find_safe_alternative(sell_price, cost_price, min_margin_pct, is_bundle)
     if after_margin >= min_margin_pct:
         return "ok", None
-    elif after_margin >= min_margin_pct - 2.0:
+
+    alt = _find_safe_alternative(sell_price, cost_price, min_margin_pct)
+    if after_margin >= min_margin_pct - 2.0:
         return "caution", alt
-    else:
-        return "blocked", alt
+    return "blocked", alt
 
 
 def _find_safe_alternative(
     sell_price: float,
     cost_price: float,
     min_margin_pct: float,
-    is_bundle: bool = False,
 ) -> Optional[dict]:
     """Binary search for max discount that keeps margin >= min_margin_pct."""
     for trial_discount in range(15, 0, -1):
@@ -140,7 +137,7 @@ def compute_bundle_margin(
     before_gp = bundle_price - total_cost
     before_margin = before_gp / bundle_price * 100 if bundle_price > 0 else 0
 
-    status, alt = _status_and_alt(before_margin, min_margin_pct, bundle_price, total_cost, 0, is_bundle=True)
+    status, alt = _status_and_alt(before_margin, min_margin_pct, bundle_price, total_cost, 0)
     return {
         "bundle_price": bundle_price,
         "total_cost": round(total_cost, 2),

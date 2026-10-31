@@ -1,102 +1,81 @@
 # DukaanSaathi AI
 
-> AI-Powered Merchant Intelligence, Margin Protection & Experiment Platform for Indian Small Businesses (Kirana Stores, Bakeries & Retailers).
+> AI-powered merchant intelligence, margin protection and experiment platform for Indian small businesses (kirana stores, bakeries and retailers).
 
 Built for the **Paytm Build for India Hackathon**.
 
----
+## Features
 
-## 🌟 Key Features
+1. **Merchant dashboard & sales analysis** — 8-week revenue/transaction trends, weekday breakdown, weak-day detection with confidence labels, top/bottom products with margin analysis.
+2. **Deterministic margin & loss protection** — Python-only financial math (no AI hallucination), `ok` / `caution` / `blocked` statuses, safer-discount alternatives, and unit/customer risk caps.
+3. **In-shop control experiments** — treatment vs control comparison with net sales lift and gross-profit change, clearly labelled as simulated.
+4. **Wholesale bill OCR & inventory** — upload a JPG/PNG/WebP/BMP/TIFF photo or a PDF invoice; the local RapidOCR pipeline extracts items, prices and quantities for review before updating wholesale costs. Manual entry always available.
+5. **Paytm Payment Gateway** — server-side order creation with the official `paytmchecksum` library, verified callbacks, idempotent order handling, and signed status enquiry.
+6. **Bilingual AI assistant** — Hindi/English merchant chat, explanations and offer copy via Groq, with deterministic local fallbacks so the app works without an API key.
+7. **Secure accounts & isolation** — backend-issued JWTs (PBKDF2-HMAC-SHA256 passwords), strict per-user/per-shop data isolation, and a one-click demo account.
+8. **User finance dashboard** — scikit-learn expense categorisation, spending prediction, anomaly detection, and per-user ML insights.
 
-1. **Merchant Dashboard & Sales Analysis**:
-   - 8-week sales revenue & transaction trend tracking.
-   - Weekday-wise breakdown detecting weak sales days (e.g. Monday -15.2% dip) with consistency scoring and confidence levels (High/Medium/Low) without false statistical significance claims.
-   - Top and bottom performing products with gross margin analysis.
+## Tech stack
 
-2. **Deterministic Margin & Loss Protection Engine**:
-   - Strictly deterministic financial calculations in Python — **zero AI hallucination**.
-   - Verified formulas for Gross Profit, Margin %, and Required Volume Uplift.
-   - Enforces margin safety statuses: `ok`, `caution`, and `blocked`.
-   - Recommends safer alternative discounts whenever the merchant's minimum margin threshold is violated.
-   - Enforces unit/customer risk caps: `units_cap = risk_budget / gp_loss`.
-
-3. **In-Shop Control Group Experiments**:
-   - Measures promotional effectiveness by comparing treatment items against similar control products within the same shop.
-   - Separates **Net Sales Lift %** from **Gross Profit Change ₹**.
-   - Transparently labels all synthetic and demo data.
-
-4. **Wholesale Bill OCR & Inventory**:
-   - Invoice and bill image upload with item, price, and quantity extraction.
-   - Review and confirmation flow updating catalogue wholesale costs.
-
-5. **Server-Side Paytm Payment Gateway Integration**:
-   - Official server-side flow with HMAC-SHA256 checksum generation using `paytmchecksum`.
-   - Staging gateway checkout integration.
-   - Server-to-server webhook verification (`/api/payment/callback`) before updating subscription state.
-   - Real-time status enquiry endpoint (`/api/payment/status/{orderId}`).
-
-6. **Bilingual AI Assistant**:
-   - Hindi (🇮🇳) and English (🇬🇧) merchant assistance.
-   - Explains verified calculations in simple terms for shopkeepers.
-   - Reliable template fallbacks ensure workflows never break if AI keys are not provided.
-
----
-
-## 🏗️ Architecture & Tech Stack
-
-```text
-[Merchant React PWA]
-        │
-   REST │ JSON (Vite / Axios / Recharts)
-        ▼
-[FastAPI Backend]
-   ├── engine/       # Sales analysis, weak-day detection, margin math, risk caps, experiments
-   ├── ai/           # Bilingual chat, explanations, bill OCR, copy generation
-   ├── api/          # REST route handlers (merchant, sales, reco, bills, offers, payment)
-   └── db/           # SQLAlchemy models & SQLite session
-        │
-        ├── [SQLite / PostgreSQL]
-        └── [Paytm Payment Gateway (Staging / Production)]
+```
+React PWA (Vite) ── REST/JSON ── FastAPI
+                                  ├── engine/  sales, margin, risk, experiments, ML
+                                  ├── ai/      Groq chat, explanations, offer copy, local OCR
+                                  ├── api/     auth, merchant, sales, recommendation, bills, offers, payment, user
+                                  └── db/      SQLAlchemy models (SQLite / PostgreSQL)
 ```
 
----
+## Local setup
 
-## 🚀 Quickstart & Local Setup
+### Backend
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+ and pnpm
-
-### 1. Backend Setup
 ```bash
 cd backend
 pip install -r requirements.txt
-cp .env.example .env
+cp .env.example .env        # set SECRET_KEY; optionally add GROQ_API_KEY / PAYTM_*
 python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
-API Documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-### 2. Frontend Setup
+API docs: http://127.0.0.1:8000/docs
+
+### Frontend
+
 ```bash
 cd frontend
-pnpm install
-pnpm dev --port 5173
+npm install
+npm run dev -- --port 5173
 ```
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
----
+Open http://127.0.0.1:5173. The Vite dev server proxies `/api` to `localhost:8000`; set `VITE_API_URL` for a hosted backend (see `frontend/.env.example`).
 
-## 🧪 Running Automated Tests
-
-Run the full pytest suite for margin calculations, risk caps, weak-day detection, and experiment net lift:
+### Tests
 
 ```bash
 cd backend
-pytest -v
+pytest -q
 ```
 
----
+## Environment variables
 
-## 📄 License
-MIT License.
+| Variable | Purpose |
+| --- | --- |
+| `SECRET_KEY` | Long random string used to sign JWT access tokens (required in production) |
+| `DATABASE_URL` | SQLite (default) or Supabase PostgreSQL connection string |
+| `GROQ_API_KEY` | Enables live Groq chat, explanations and offer copy (optional) |
+| `GROQ_MODEL` | Groq text model override |
+| `PAYTM_MID` / `PAYTM_MERCHANT_KEY` | Paytm gateway credentials |
+| `PAYTM_ENV` / `PAYTM_WEBSITE` / `PAYTM_CHANNEL_ID` | Paytm environment and website settings |
+| `PAYTM_CALLBACK_URL` | Public backend callback URL |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins (any `*.vercel.app` is also allowed) |
 
+Without `GROQ_API_KEY`, all AI features use deterministic local fallbacks. Without Paytm credentials, `/api/payment/initiate` returns a clear `503 payment_not_configured` response. Bill OCR runs locally and does not require any API key.
+
+## Deployment
+
+- Backend: Render (`render.yaml` included; `SECRET_KEY` is auto-generated).
+- Database: SQLite locally or Supabase PostgreSQL in production (tables are created automatically on startup).
+- Frontend: Vercel (set `VITE_API_URL` to the Render backend URL).
+
+## License
+
+MIT

@@ -7,11 +7,9 @@ from __future__ import annotations
 import uuid
 from sqlalchemy.orm import Session
 from db.models import Merchant, Product, Recommendation
-from engine.analysis import get_primary_weak_day, get_weekday_summary, get_sales_df
+from engine.analysis import get_primary_weak_day
 from engine.margin import check_margin, compute_bundle_margin
 from engine.risk import compute_risk_cap
-
-OFFER_TYPES = ["discount", "bundle"]
 
 
 def build_recommendation(db: Session, merchant_id: int, lang: str = "hi") -> dict:
@@ -165,7 +163,7 @@ def _template_explanation(weak_day, dip_pct, offer, margin, risk, lang) -> str:
         )
     else:
         return (
-            f"Sales dip {dip_pct:.1f}% on {weak_day}s. "
+            f"Sales dip {dip_pct:.1f}% on {weak_day}. "
             f"Offer {discount}% off on '{offer_name}' to attract more customers. "
             f"Capped at {units_cap} units—max possible loss only ₹{max_loss}. "
             f"Post-discount margin: {margin_after:.1f}% (status: {margin_status})."

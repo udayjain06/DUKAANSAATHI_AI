@@ -98,12 +98,13 @@ def weak_day(
     """Detect weak sales days scoped to the authenticated merchant."""
     days = detect_weak_days(db, merchant.id)
     primary = get_primary_weak_day(db, merchant.id)
+    sales = get_sales_summary(db, merchant.id)
     return {
         "primary_weak_day": primary,
         "all_weekdays": days,
-        "data_label": "real" if any(not d.get("is_synthetic", True) for d in days) else "synthetic",
+        "data_label": sales.get("data_label", "synthetic"),
         "has_data": len(days) > 0,
-        "note": "Based on historical sales pattern." if days else "No sales data recorded yet.",
+        "note": "Based on consistent historical pattern, not statistical significance.",
     }
 
 
@@ -147,5 +148,5 @@ def dashboard_summary(
         "pending_recommendations": pending_recs,
         "active_offers": active_offers,
         "has_sales": has_sales,
-        "data_label": str(sales.get("data_label", "real")),
+        "data_label": str(sales.get("data_label", "synthetic")),
     }

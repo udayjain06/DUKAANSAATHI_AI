@@ -52,13 +52,7 @@ export default function Bills() {
         })))
         setStatusMsg(`Successfully extracted ${res.data.extracted_items.length} items via AI OCR. Review wholesale costs below.`)
       } else {
-        setStatusMsg("AI OCR completed. Template fallback initiated — add or verify wholesale items below.")
-        if (extractedItems.length === 0) {
-          setExtractedItems([
-            { product_name: 'Tata Tea Gold 250g', cost_price: 115, quantity: 10, unit: 'pack' },
-            { product_name: 'Fortune Sunflower Oil 1L', cost_price: 130, quantity: 15, unit: 'bottle' }
-          ])
-        }
+        setStatusMsg(res.data.message || "No items were extracted. Add or verify items manually below.")
       }
     } catch (err) {
       setError(err.response?.data?.detail || err.message)
@@ -157,7 +151,7 @@ export default function Bills() {
             <input
               type="file"
               ref={fileInputRef}
-              accept="image/*,.pdf"
+              accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff,application/pdf"
               style={{ display: 'none' }}
               onChange={e => {
                 if (e.target.files && e.target.files[0]) {
@@ -170,7 +164,7 @@ export default function Bills() {
               {file ? file.name : 'Drop supplier bill here or click to browse'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-              Supports JPG, PNG invoices and PDF supplier receipts
+              Supports JPG, PNG and WebP bill photos (max 10 MB)
             </div>
           </div>
 

@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from db.models import Experiment, Offer, SalesProductDaily, Product
 
-random.seed(42)
+_RNG = random.Random(42)
 
 
 def simulate_after_period(
@@ -21,7 +21,7 @@ def simulate_after_period(
     noise_pct: float = 5.0,
 ) -> int:
     """Simulate after-period units with a fixed lift assumption."""
-    noise = random.uniform(-noise_pct, noise_pct)
+    noise = _RNG.uniform(-noise_pct, noise_pct)
     after_units = int(before_units * (1 + (lift_assumption_pct + noise) / 100))
     return max(after_units, 1)
 
@@ -92,8 +92,8 @@ def create_simulated_experiment(
 ) -> Experiment:
     """Create a simulated experiment for demo purposes."""
     # Estimate before period units from sales data
-    t_before = random.randint(80, 140)
-    c_before = random.randint(150, 230)
+    t_before = _RNG.randint(80, 140)
+    c_before = _RNG.randint(150, 230)
 
     lift_assumption = max(20.0, 30.0 - discount_pct)  # rough assumption
     t_after = simulate_after_period(t_before, lift_assumption)

@@ -133,7 +133,7 @@ def seed_sales(db: Session, merchant: Merchant, products: list, weeks: int = 8):
     base = profile["base"]
 
     today = datetime.date.today()
-    start_date = today - datetime.timedelta(weeks=weeks)
+    start_date = today - datetime.timedelta(days=weeks * 7 - 1)
 
     current = start_date
     while current <= today:
@@ -143,39 +143,41 @@ def seed_sales(db: Session, merchant: Merchant, products: list, weeks: int = 8):
         day_amount = round(base * mult, 2)
         txn_count = random.randint(18, 55)
 
-        sd = SalesDaily(
-            merchant_id=merchant.id,
-            date=current,
-            weekday=weekday_name,
-            total_amount=day_amount,
-            txn_count=txn_count,
-            is_synthetic=True,
-        )
-        db.add(sd)
-
-        # Distribute revenue across products
         remaining = day_amount
+        day_revenue = 0.0
         for i, prod in enumerate(products):
             if i == len(products) - 1:
-                units = max(1, int(remaining / prod.sell_price))
-                rev = round(units * prod.sell_price, 2)
+                units = max(0, int(remaining / prod.sell_price)) if remaining > 0 else 0
             else:
                 share = random.uniform(0.05, 0.20)
-                rev = round(day_amount * share, 2)
-                units = max(0, int(rev / prod.sell_price))
-                remaining -= rev
+                units = max(0, int((day_amount * share) / prod.sell_price))
+
+            revenue = round(units * prod.sell_price, 2)
+            remaining = max(0.0, remaining - revenue)
 
             if units > 0:
-                spd = SalesProductDaily(
-                    merchant_id=merchant.id,
-                    date=current,
-                    product_id=prod.id,
-                    units=units,
-                    revenue=round(units * prod.sell_price, 2),
-                    is_synthetic=True,
+                db.add(
+                    SalesProductDaily(
+                        merchant_id=merchant.id,
+                        date=current,
+                        product_id=prod.id,
+                        units=units,
+                        revenue=revenue,
+                        is_synthetic=True,
+                    )
                 )
-                db.add(spd)
+                day_revenue += revenue
 
+        db.add(
+            SalesDaily(
+                merchant_id=merchant.id,
+                date=current,
+                weekday=weekday_name,
+                total_amount=round(day_revenue or day_amount, 2),
+                txn_count=txn_count,
+                is_synthetic=True,
+            )
+        )
         current += datetime.timedelta(days=1)
 
     db.commit()

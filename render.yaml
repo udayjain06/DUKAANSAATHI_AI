@@ -11,12 +11,12 @@ services:
         value: 3.11.9
       - key: APP_ENV
         value: production
+      - key: SECRET_KEY
+        generateValue: true
       - key: DATABASE_URL
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
-      - key: SECRET_KEY
-        generateValue: true
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
@@ -31,4 +31,5 @@ services:
         value: WEBSTAGING
       - key: PAYTM_CHANNEL_ID
         value: WEB
-
+      - key: PAYTM_CALLBACK_URL
+        sync: false

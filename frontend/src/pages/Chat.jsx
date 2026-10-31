@@ -72,10 +72,24 @@ export default function Chat() {
     setLoading(true)
 
     try {
-      // First attempt Groq AI endpoint
+      let context
+      try {
+        const u = await api.get('/user/dashboard')
+        const f = u.data.financials || {}
+        context = {
+          balance: f.balance,
+          total_income: f.total_income,
+          total_expense: f.total_expense,
+          predicted_30_days: u.data.ml_predictions?.next_30_days_total,
+          top_category: u.data.categories?.[0]?.category,
+        }
+      } catch {
+        context = undefined
+      }
+
       let res
       try {
-        res = await api.post('/user/chat', { message: text, lang })
+        res = await api.post('/user/chat', { message: text, lang, context })
       } catch {
         res = await api.post('/chat', { message: text, lang })
       }

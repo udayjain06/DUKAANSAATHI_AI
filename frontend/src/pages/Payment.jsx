@@ -99,7 +99,7 @@ export default function Payment() {
           To process live or staging payments, supply your <code>PAYTM_MID</code> and <code>PAYTM_MERCHANT_KEY</code> in the backend <code>.env</code> file.
           <div style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.5 }}>
             Obtain test credentials from: <a href="https://business.paytm.com/" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--teal-dark)', fontWeight: 600 }}>https://business.paytm.com/</a>.
-            The backend architecture, HMAC checksum generation, callback webhook, and verification routes are fully built and ready.
+            The backend architecture, official Paytm checksum generation, callback webhook, and verification routes are fully built and ready.
           </div>
         </div>
       ) : (
@@ -185,14 +185,14 @@ export default function Payment() {
         >
           <div>
             <div className="alert alert-info" style={{ fontSize: 13, marginBottom: 14 }}>
-              Backend generated order #{paytmPayload.order_id} with secure HMAC-SHA256 checksum signature.
+              Backend generated order #{paytmPayload.order_id} with a signed Paytm checksum.
             </div>
             <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 'var(--radius-sm)', fontSize: 13, marginBottom: 16 }}>
               <div style={{ marginBottom: 4 }}><strong>Plan:</strong> {paytmPayload.plan}</div>
               <div style={{ marginBottom: 4 }}><strong>Amount:</strong> {fmt(paytmPayload.amount)}</div>
               <div style={{ marginBottom: 4 }}><strong>Environment:</strong> {paytmPayload.env}</div>
               <div style={{ marginBottom: 8 }}><strong>Gateway Target:</strong> <code style={{ fontSize: 11 }}>{paytmPayload.txn_url}</code></div>
-              <div><strong>Checksum (HMAC):</strong></div>
+              <div><strong>Checksum:</strong></div>
               <code style={{ fontSize: 11, wordBreak: 'break-all', display: 'block', background: 'var(--surface-2)', padding: 10, borderRadius: 6, marginTop: 4 }}>
                 {paytmPayload.paytm_params?.CHECKSUMHASH}
               </code>
