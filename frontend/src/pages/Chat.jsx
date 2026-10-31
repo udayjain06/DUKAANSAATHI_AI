@@ -18,6 +18,17 @@ export default function Chat() {
   const scrollRef = useRef(null)
 
   useEffect(() => {
+    // Load persisted chat history for the authenticated user
+    api.get('/chat/history')
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setMessages(res.data)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 

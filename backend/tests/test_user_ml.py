@@ -4,9 +4,25 @@ from main import app
 from db.session import init_db
 from engine.ml_engine import categorize_expense, is_anomaly, predict_future_spending
 
+from core.security import create_access_token
+from db.session import SessionLocal
+from db.models import UserProfile
+
 # Ensure SQLite schema is created for test tables
 init_db()
 client = TestClient(app)
+
+# Ensure test-user-42 exists
+_db = SessionLocal()
+try:
+    if not _db.query(UserProfile).filter(UserProfile.id == "test-user-42").first():
+        _db.add(UserProfile(id="test-user-42", email="testuser@paytm.test", full_name="Test User 42"))
+        _db.commit()
+finally:
+    _db.close()
+
+test_token = create_access_token({"sub": "test-user-42", "email": "testuser@paytm.test"})
+auth_headers = {"Authorization": f"Bearer {test_token}"}
 
 def test_ml_categorize_logic():
     assert categorize_expense("Dominos Farmhouse Pizza") == "Food"
@@ -29,11 +45,7 @@ def test_ml_future_spending_prediction():
     assert pred["next_30_days_total"] > pred["next_7_days_total"]
 
 def test_user_dashboard_endpoint():
-    headers = {
-        "X-User-Id": "test-user-42",
-        "X-User-Email": "testuser@paytm.test"
-    }
-    response = client.get("/api/user/dashboard", headers=headers)
+    response = client.get("/api/user/dashboard", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
     assert "financials" in data
@@ -43,17 +55,13 @@ def test_user_dashboard_endpoint():
     assert data["user"]["id"] == "test-user-42"
 
 def test_add_transaction_with_auto_ml_categorization():
-    headers = {
-        "X-User-Id": "test-user-42",
-        "X-User-Email": "testuser@paytm.test"
-    }
     payload = {
         "description": "Starbucks Cappuccino Coffee",
         "amount": 320.0,
         "type": "expense",
         "category": "auto"
     }
-    response = client.post("/api/user/transactions", json=payload, headers=headers)
+    response = client.post("/api/user/transactions", json=payload, headers=auth_headers)
     assert response.status_code == 200
     res_data = response.json()
     assert res_data["category"] == "Food"

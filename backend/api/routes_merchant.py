@@ -1,9 +1,10 @@
-"""Merchant setup routes."""
-from fastapi import APIRouter, Depends, HTTPException
+"""Merchant setup routes with user-level workspace isolation."""
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import Merchant
+from core.auth import get_current_merchant
 
 router = APIRouter(prefix="/api/merchant", tags=["merchant"])
 
@@ -30,36 +31,24 @@ class MerchantResponse(BaseModel):
 
 
 @router.post("/setup", response_model=MerchantResponse)
-def merchant_setup(payload: MerchantSetup, db: Session = Depends(get_db)):
-    """Create or update merchant profile (merchant_id=1 for demo)."""
-    merchant = db.query(Merchant).filter(Merchant.id == 1).first()
-    if merchant:
-        merchant.shop_type = payload.shop_type
-        merchant.min_margin_pct = payload.min_margin_pct
-        merchant.language = payload.language
-        merchant.name = payload.name
-        merchant.phone = payload.phone
-        merchant.risk_budget_inr = payload.risk_budget_inr
-    else:
-        merchant = Merchant(
-            id=1,
-            shop_type=payload.shop_type,
-            min_margin_pct=payload.min_margin_pct,
-            language=payload.language,
-            name=payload.name,
-            phone=payload.phone,
-            risk_budget_inr=payload.risk_budget_inr,
-        )
-        db.add(merchant)
+def merchant_setup(
+    payload: MerchantSetup,
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Update the merchant profile for the authenticated user's shop."""
+    merchant.shop_type = payload.shop_type
+    merchant.min_margin_pct = payload.min_margin_pct
+    merchant.language = payload.language
+    merchant.name = payload.name
+    merchant.phone = payload.phone
+    merchant.risk_budget_inr = payload.risk_budget_inr
     db.commit()
     db.refresh(merchant)
     return merchant
 
 
 @router.get("/profile", response_model=MerchantResponse)
-def get_profile(db: Session = Depends(get_db)):
-    merchant = db.query(Merchant).filter(Merchant.id == 1).first()
-    if not merchant:
-        raise HTTPException(status_code=404, detail="Merchant not set up yet")
+def get_profile(merchant: Merchant = Depends(get_current_merchant)):
+    """Retrieve merchant profile for the authenticated user."""
     return merchant
-

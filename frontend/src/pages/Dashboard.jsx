@@ -112,6 +112,39 @@ export default function Dashboard() {
     }
   }
 
+  if (!user && !loading) {
+    return (
+      <div style={{ maxWidth: 540, margin: '60px auto', textAlign: 'center', padding: '0 20px' }}>
+        <div className="card" style={{ padding: '40px 32px' }}>
+          <div className="brand-mark" style={{ width: 56, height: 56, fontSize: 28, margin: '0 auto 16px' }}>D</div>
+          <h2 style={{ fontSize: 24, marginBottom: 8, color: 'var(--heading)' }}>Welcome to DukaanSaathi AI</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
+            Empower your shop with AI retail analytics, profit protection, weak-day offers, and smart ML predictions.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Link to="/auth" className="btn btn-primary" style={{ padding: '12px' }}>
+              Sign In to Your Shop
+            </Link>
+            <button
+              onClick={() => {
+                api.post('/auth/demo').then(res => {
+                  if (res.data?.token) {
+                    localStorage.setItem('dukaansaathi_auth_token', res.data.token)
+                    window.location.reload()
+                  }
+                })
+              }}
+              className="btn btn-ghost"
+              style={{ padding: '12px', border: '1px solid var(--border)' }}
+            >
+              ⚡ Explore Demo Store (Sharma General Store)
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) return <Loading text={t('loading')} />
   if (error) return <ErrorMsg message={error} />
   if (!data) return null
@@ -137,13 +170,52 @@ export default function Dashboard() {
   const axis = { fontSize: 12, fill: 'var(--muted)' }
 
   // User financials & ML predictions
-  const financials = userDash?.financials || { balance: 28450, total_income: 55000, total_expense: 26550, savings_rate_pct: 51.7 }
-  const predictions = userDash?.ml_predictions || { predicted_7day_spending: 5800, predicted_30day_spending: 24500, trend: 'steady', confidence_score: 96.5 }
-  const categoriesData = (userDash?.categories || []).map(c => ({ name: c.category, value: Math.round(c.total_amount) }))
+  const financials = userDash?.financials || { balance: 0, total_income: 0, total_expense: 0, savings_rate_pct: 0 }
+  const predictions = userDash?.ml_predictions || { predicted_7day_spending: 0, predicted_30day_spending: 0, trend: 'new', confidence_score: 0 }
+  const categoriesData = (userDash?.categories || []).map(c => ({ name: c.category, value: Math.round(c.total_amount || c.amount || 0) }))
   const recentUserTxns = userDash?.recent_transactions || []
 
   return (
     <div className="home">
+      {/* ───────────── ONBOARDING GUIDE FOR NEW SHOPS ───────────── */}
+      {(!sales.total_revenue && recentUserTxns.length === 0) && (
+        <div className="card" style={{
+          marginBottom: 24,
+          padding: '24px',
+          background: 'linear-gradient(135deg, rgba(0, 186, 242, 0.08), rgba(0, 41, 112, 0.12))',
+          border: '1px solid rgba(0, 186, 242, 0.3)',
+          borderRadius: 16
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 32 }}>🏪</span>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px', color: 'var(--heading)' }}>
+                {lang === 'hi' ? 'दुकानसाथी AI में आपका स्वागत है!' : 'Welcome to DukaanSaathi AI!'}
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
+                {lang === 'hi'
+                  ? 'आपकी दुकान का व्यक्तिगत खाता तैयार है। AI भविष्यवाणी और मुनाफ़ा विश्लेषण शुरू करने के लिए ये कदम उठाएं:'
+                  : 'Your business workspace is set up and strictly isolated. Get started in 3 quick steps to unlock AI insights:'}
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Link to="/products" className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📦</span> 1. {lang === 'hi' ? 'उत्पाद जोड़ें' : 'Add Products'}
+                </Link>
+                <Link to="/bills" className="btn btn-ghost btn-sm" style={{ border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>🧾</span> 2. {lang === 'hi' ? 'होलसेल बिल अपलोड करें' : 'Upload Bills'}
+                </Link>
+                <button onClick={() => setShowTxModal(true)} className="btn btn-ghost btn-sm" style={{ border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>💳</span> 3. {lang === 'hi' ? 'बिक्री / खर्च दर्ज करें' : 'Record Transaction'}
+                </button>
+                <Link to="/setup" className="btn btn-ghost btn-sm" style={{ border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>⚙️</span> {lang === 'hi' ? 'दुकान सेटिंग्स' : 'Shop Setup'}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ───────────── USER FINANCIAL & ML HUB ───────────── */}
       <section className="section" style={{ paddingTop: 0, marginBottom: 28 }}>
         <div style={{

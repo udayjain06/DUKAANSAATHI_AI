@@ -31,3 +31,4 @@ def setup_test_database():
         Base.metadata.drop_all(bind=engine)
     except Exception:
         pass
+

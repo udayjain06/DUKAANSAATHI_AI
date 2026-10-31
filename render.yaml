@@ -31,3 +31,4 @@ services:
         value: WEBSTAGING
       - key: PAYTM_CHANNEL_ID
         value: WEB
+

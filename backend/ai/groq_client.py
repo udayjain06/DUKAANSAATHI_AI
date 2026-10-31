@@ -1,7 +1,7 @@
 """
 DukaanSaathi / Paytm AI — Groq Conversational AI Client
 Provides fast, intelligent financial guidance in Hindi and English
-using Groq's low-latency LLaMA models.
+using Groq's low-latency LLaMA models, grounded in the user's real business data.
 """
 from __future__ import annotations
 import os
@@ -20,30 +20,52 @@ def ask_groq_assistant(
     financial_context: dict = None,
 ) -> str:
     """
-    Generate conversational financial insights and answers using Groq.
-    Falls back gracefully if GROQ_API_KEY is not configured.
+    Generate conversational business and financial insights using Groq.
+    Grounded exclusively in the authenticated shopkeeper's real metrics.
+    Falls back gracefully if GROQ_API_KEY is not configured or errors occur.
     """
     key = GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")
+    is_hi = lang == "hi"
+
+    # Evaluate whether user has actual data
+    has_sales = True
+    product_count = 1
+    if financial_context:
+        has_sales = bool(financial_context.get("has_sales_history") or financial_context.get("has_sales"))
+        product_count = int(financial_context.get("product_count", 0))
+
     if key and key.strip() and key != "YOUR_GROQ_API_KEY":
         try:
             client = Groq(api_key=key.strip())
             
             context_str = ""
             if financial_context:
-                context_str = (
-                    f"User Financial Summary: Current Balance: ₹{financial_context.get('balance', 0):,.2f}, "
-                    f"Monthly Income: ₹{financial_context.get('total_income', 0):,.2f}, "
-                    f"Monthly Expense: ₹{financial_context.get('total_expense', 0):,.2f}, "
-                    f"Predicted 30-Day Spending: ₹{financial_context.get('predicted_30_days', 0):,.2f}, "
-                    f"Top Expense Category: {financial_context.get('top_category', 'General')}."
-                )
+                shop_name = financial_context.get("shop_name", "My Shop")
+                total_income = financial_context.get("total_income", 0)
+                balance = financial_context.get("balance", 0)
+                weak_day = financial_context.get("weak_day")
+
+                if not has_sales and product_count == 0:
+                    context_str = (
+                        f"Current Business Status for {shop_name}: Newly opened account. "
+                        "Products in catalog: 0. Recorded sales: ₹0. "
+                        "CRITICAL INSTRUCTION: The user has not added any products or sales yet. "
+                        "Do not fabricate numbers. Explain that they need to add products in the Products tab "
+                        "and record transactions/bills to get personalised AI predictions."
+                    )
+                else:
+                    context_str = (
+                        f"Current Business Data for {shop_name}: "
+                        f"Active Products: {product_count}, Total Revenue: ₹{total_income:,.2f}, "
+                        f"Ledger Balance: ₹{balance:,.2f}, Slowest Day: {weak_day or 'Calculating pattern'}."
+                    )
 
             system_prompt = (
-                "You are Paytm / DukaanSaathi AI Financial Assistant. "
-                "You help users manage expenses, understand ML predictions, protect profit margins, and budget smartly. "
-                f"Respond naturally in {'Hindi (Devanagari script with friendly tone)' if lang == 'hi' else 'English'}. "
-                "Keep your answers concise, practical, and under 4-5 sentences. "
-                "Do not hallucinate false claims; refer to the user's provided numbers when appropriate.\n"
+                "You are DukaanSaathi AI Financial & Retail Assistant for Indian shopkeepers. "
+                "You help merchants understand sales trends, optimize profit margins, manage inventory, and budget smartly. "
+                f"Respond naturally in {'Hindi (Devanagari script with polite, encouraging tone)' if is_hi else 'English'}. "
+                "Keep responses concise, actionable, and under 4-5 sentences. "
+                "Never invent fake sales statistics. Rely only on the shopkeeper's provided numbers.\n"
                 f"{context_str}"
             )
 
@@ -60,32 +82,36 @@ def ask_groq_assistant(
         except Exception as e:
             logger.warning(f"Groq API call error: {e}. Using fallback assistant.")
 
-    # Intelligent Local Fallback Response
+    # Intelligent Local Fallback Response Grounded in User State
     msg = user_message.lower()
-    is_hi = lang == "hi"
+
+    if not has_sales and product_count == 0:
+        if any(w in msg for w in ["predict", "future", "bhavishya", "bikri", "sale", "weak", "slow"]):
+            if is_hi:
+                return "आपकी दुकान अभी नई है और इसमें कोई उत्पाद या बिक्री दर्ज नहीं है। सटीक भविष्यवाणी के लिए पहले 'Products' टैब में जाकर उत्पाद जोड़ें।"
+            return "Your store is newly registered with no products or sales recorded yet. Please add your catalog in the 'Products' tab to unlock AI forecasts."
 
     if any(w in msg for w in ["predict", "future", "bhavishya", "kitna kharcha"]):
         if is_hi:
-            return "ML मॉडल के अनुसार आपका अगले 30 दिनों का अनुमानित खर्च लगभग ₹39,600 रहने की उम्मीद है। बचत दर बढ़ाने के लिए गैर-जरूरी खर्चों को 10-15% कम करें।"
-        return "Based on our trained ML Ridge Regression model, your predicted 30-day expenditure is ₹39,604. We recommend allocating at least 20% of your income directly to savings."
+            return "दुकानसाथी एमएल मॉडल आपकी बिक्री और खर्च पैटर्न के आधार पर भविष्यवाणी करता है। नियमित बिक्री दर्ज करके आप सटीक 30-दिन का अनुमान देख सकते हैं।"
+        return "DukaanSaathi's ML Ridge Regression model predicts future trends based on your real transactions. Keep your ledger updated to see rolling 30-day forecasts."
 
-    elif any(w in msg for w in ["anomaly", "unusual", "alert", "kharcha zyada"]):
+    elif any(w in msg for w in ["weak", "slow", "kam bikri", "slow day"]):
         if is_hi:
-            return "हमारा Isolation Forest ML मॉडल ₹15,000 से अधिक या असामान्य खर्चों को तुरंत फ्लैग करता है ताकि कोई अनधिकृत लेन-देन न हो।"
-        return "Our scikit-learn Isolation Forest model monitors your ledger in real-time, instantly flagging transactions over ₹15,000 or abnormal frequency as potential anomalies."
-
-    elif any(w in msg for w in ["save", "budget", "bachat", "invest"]):
-        if is_hi:
-            return "50-30-20 नियम अपनाएं: 50% बुनियादी जरूरतों (किराया, राशन) पर, 30% जीवनशैली पर, और 20% तुरंत बचत या निवेश में डालें।"
-        return "Apply the classic 50-30-20 rule: 50% on essential needs, 30% on discretionary lifestyle, and 20% strictly toward emergency savings and investments."
+            return "कम बिक्री वाले दिन का विश्लेषण 'Sales Analysis' में उपलब्ध है। उस दिन के लिए विशेष डिस्काउंट या बंडल ऑफर चलाकर ग्राहकों को आकर्षित करें।"
+        return "Your slowest sales days are analyzed under 'Sales Analysis'. You can run targeted bundle offers on these days to boost footfall."
 
     elif any(w in msg for w in ["margin", "munafa", "profit", "discount"]):
         if is_hi:
             return "दुकानसाथी का मार्जिन इंजन आपके न्यूनतम 15% ग्रॉस प्रॉफिट की रक्षा करता है। कोई भी डिस्काउंट तभी स्वीकृत होता है जब वह सुरक्षित लाभ सीमा में हो।"
-        return "DukaanSaathi's deterministic margin engine protects your 15% gross profit floor, ensuring discounts never cause financial loss regardless of volume."
+        return "DukaanSaathi's deterministic margin engine protects your 15% gross profit floor, ensuring discounts never cause loss."
+
+    elif any(w in msg for w in ["anomaly", "unusual", "alert", "kharcha zyada"]):
+        if is_hi:
+            return "हमारा Isolation Forest एमएल मॉडल असामान्य या बड़े खर्चों को तुरंत फ्लैग करता है ताकि लेन-देन सुरक्षित रहे।"
+        return "Our Isolation Forest ML model monitors your transaction ledger, flagging unusually large transactions as anomalies."
 
     else:
         if is_hi:
-            return "नमस्ते! मैं आपका Paytm AI वित्तीय सहायक हूँ। अपनी बचत, खर्च के रुझान, या आगामी वित्तीय भविष्यवाणियों के बारे में कुछ भी पूछें।"
-        return "Hello! I am your Paytm AI Financial Assistant. Ask me anything about your spending trends, ML predictions, budgeting, or profit margins."
-
+            return "नमस्ते! मैं आपका दुकानसाथी AI सहायक हूँ। अपने उत्पादों, मुनाफ़े के मार्जिन, या दुकान की बिक्री बढ़ाने के बारे में कुछ भी पूछें।"
+        return "Hello! I am your DukaanSaathi AI Assistant. Ask me anything about your products, profit margins, weak-day offers, or budgeting."

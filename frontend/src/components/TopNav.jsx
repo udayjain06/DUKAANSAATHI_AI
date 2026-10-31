@@ -22,7 +22,7 @@ export default function TopNav() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
-  const { user, signOut } = useAuth()
+  const { user, merchant, signOut } = useAuth()
   const { lang, toggleLang, t } = useLanguage()
   const { theme, toggleTheme } = useTheme()
 
@@ -35,7 +35,8 @@ export default function TopNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'
+  const userInitial = user?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'
+  const shopLabel = merchant?.name || user?.full_name || user?.email?.split('@')[0]
 
   return (
     <header className={`topbar ${scrolled ? 'scrolled' : ''}`}>
@@ -83,15 +84,31 @@ export default function TopNav() {
           {/* Auth State */}
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {user.is_demo && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    color: '#F59E0B',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                  }}
+                  title="Using Demo Store"
+                >
+                  DEMO
+                </span>
+              )}
               <div
                 style={{
                   width: 30, height: 30, borderRadius: '50%',
                   background: 'var(--brand)', color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 13, fontWeight: 700,
-                  boxShadow: 'var(--shadow-xs)'
+                  boxShadow: 'var(--shadow-xs)',
+                  cursor: 'default',
                 }}
-                title={user.email}
+                title={`${user.email} (${shopLabel})`}
               >
                 {userInitial}
               </div>

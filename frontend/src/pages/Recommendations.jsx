@@ -23,8 +23,12 @@ export default function Recommendations() {
   const handleGenerate = async () => {
     setGenerating(true)
     try {
-      await api.post('/recommendation')
-      load()
+      const res = await api.post('/recommendation')
+      if (res.data?.status === 'insufficient_data') {
+        alert(res.data.message)
+      } else {
+        load()
+      }
     } catch (err) {
       alert(err.response?.data?.detail || err.message)
     } finally {

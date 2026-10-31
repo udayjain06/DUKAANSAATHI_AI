@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import PaymentOrder, Merchant
+from core.auth import get_current_merchant, get_optional_user
 
 router = APIRouter(prefix="/api/payment", tags=["payment"])
 logger = logging.getLogger(__name__)
@@ -93,8 +94,12 @@ class InitPaymentRequest(BaseModel):
 
 
 @router.post("/initiate")
-def initiate_payment(payload: InitPaymentRequest, db: Session = Depends(get_db)):
-    """Create a Paytm payment order on the backend."""
+def initiate_payment(
+    payload: InitPaymentRequest,
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Create a Paytm payment order for the authenticated merchant."""
     if not _paytm_configured():
         return JSONResponse(
             status_code=503,
@@ -118,7 +123,7 @@ def initiate_payment(payload: InitPaymentRequest, db: Session = Depends(get_db))
 
     # Check idempotency: don't create duplicate pending orders
     existing = db.query(PaymentOrder).filter(
-        PaymentOrder.merchant_id == MERCHANT_ID,
+        PaymentOrder.merchant_id == merchant.id,
         PaymentOrder.status == "PENDING",
         PaymentOrder.plan_name == payload.plan,
     ).first()
@@ -126,7 +131,7 @@ def initiate_payment(payload: InitPaymentRequest, db: Session = Depends(get_db))
         order_id = existing.order_id
     else:
         po = PaymentOrder(
-            merchant_id=MERCHANT_ID,
+            merchant_id=merchant.id,
             order_id=order_id,
             amount=amount,
             plan_name=payload.plan,
@@ -198,6 +203,29 @@ async def payment_callback(request: Request, db: Session = Depends(get_db)):
     db.commit()
 
     return {"status": po.status, "order_id": order_id}
+
+
+@router.get("/orders")
+def list_merchant_orders(
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """List payment orders strictly for the authenticated merchant."""
+    orders = db.query(PaymentOrder).filter(
+        PaymentOrder.merchant_id == merchant.id
+    ).order_by(PaymentOrder.created_at.desc()).all()
+    return [
+        {
+            "order_id": po.order_id,
+            "amount": po.amount,
+            "plan": po.plan_name,
+            "status": po.status,
+            "txn_id": po.txn_id,
+            "created_at": str(po.created_at),
+            "verified_at": str(po.verified_at) if po.verified_at else None,
+        }
+        for po in orders
+    ]
 
 
 @router.get("/status/{order_id}")

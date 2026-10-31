@@ -68,10 +68,42 @@ def get_db():
         db.close()
 
 
+def run_migrations(target_engine):
+    """
+    Safely apply schema migrations for existing and new databases.
+    Adds missing columns to tables without destroying or dropping existing data.
+    """
+    from sqlalchemy import inspect, text
+    try:
+        inspector = inspect(target_engine)
+        tables = inspector.get_table_names()
+
+        with target_engine.begin() as conn:
+            # Check merchant table
+            if "merchant" in tables:
+                cols = [c["name"] for c in inspector.get_columns("merchant")]
+                if "user_id" not in cols:
+                    logger.info("Migrating schema: adding user_id column to merchant table...")
+                    conn.execute(text("ALTER TABLE merchant ADD COLUMN user_id VARCHAR(80)"))
+
+            # Check user_profile table
+            if "user_profile" in tables:
+                cols = [c["name"] for c in inspector.get_columns("user_profile")]
+                if "password_hash" not in cols:
+                    logger.info("Migrating schema: adding password_hash column to user_profile table...")
+                    conn.execute(text("ALTER TABLE user_profile ADD COLUMN password_hash VARCHAR(255)"))
+                if "is_demo" not in cols:
+                    logger.info("Migrating schema: adding is_demo column to user_profile table...")
+                    conn.execute(text("ALTER TABLE user_profile ADD COLUMN is_demo BOOLEAN DEFAULT FALSE"))
+    except Exception as exc:
+        logger.warning(f"Migration check notice: {exc}")
+
+
 def init_db():
     """
-    Safely initialize schema.
+    Safely initialize schema and run non-destructive column migrations.
     create_all only creates tables that do not exist yet without modifying or dropping existing tables.
     """
     from db.models import Base
     Base.metadata.create_all(bind=engine)
+    run_migrations(engine)

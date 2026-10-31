@@ -1,35 +1,40 @@
-"""Recommendation + Bills routes."""
+"""Recommendation + Bills routes with user-level data isolation."""
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from pydantic import BaseModel, Field
 from typing import Optional
 from sqlalchemy.orm import Session
 from db.session import get_db
-from db.models import Recommendation, BillItem, Product, Merchant
+from db.models import Recommendation, BillItem, Product, Merchant, Offer
+from core.auth import get_current_merchant
 from engine.recommendation import build_recommendation, apply_decision, get_pending_recommendations
 from engine.margin import check_margin
 
 router = APIRouter(prefix="/api/recommendation", tags=["recommendation"])
 bills_router = APIRouter(prefix="/api/bills", tags=["bills"])
-
-MERCHANT_ID = 1
+margin_router = APIRouter(prefix="/api/margin", tags=["margin"])
 
 
 # ─── Recommendation ─────────────────────────────────────────────────────────
 
 @router.post("")
-def create_recommendation(db: Session = Depends(get_db)):
-    """Generate a new recommendation for the merchant."""
-    merchant = db.query(Merchant).filter(Merchant.id == MERCHANT_ID).first()
+def create_recommendation(
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Generate a new recommendation for the authenticated merchant."""
     lang = merchant.language if merchant else "hi"
-    return build_recommendation(db, MERCHANT_ID, lang)
+    return build_recommendation(db, merchant.id, lang)
 
 
 @router.get("")
-def list_recommendations(db: Session = Depends(get_db)):
-    """List all recommendations."""
+def list_recommendations(
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """List recommendations strictly scoped to the authenticated merchant."""
     recs = db.query(Recommendation).filter(
-        Recommendation.merchant_id == MERCHANT_ID
+        Recommendation.merchant_id == merchant.id
     ).order_by(Recommendation.created_at.desc()).limit(20).all()
     return [
         {
@@ -44,15 +49,27 @@ def list_recommendations(db: Session = Depends(get_db)):
 
 
 @router.get("/pending")
-def pending_recommendations(db: Session = Depends(get_db)):
-    return get_pending_recommendations(db, MERCHANT_ID)
+def pending_recommendations(
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Get pending recommendations for the authenticated merchant."""
+    return get_pending_recommendations(db, merchant.id)
 
 
 @router.get("/{rec_id}")
-def get_recommendation(rec_id: str, db: Session = Depends(get_db)):
-    rec = db.query(Recommendation).filter(Recommendation.id == rec_id).first()
+def get_recommendation(
+    rec_id: str,
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Fetch recommendation by ID with strict ownership validation."""
+    rec = db.query(Recommendation).filter(
+        Recommendation.id == rec_id,
+        Recommendation.merchant_id == merchant.id,
+    ).first()
     if not rec:
-        raise HTTPException(status_code=404, detail="Recommendation not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found")
     return {
         "id": rec.id, "weak_day": rec.weak_day, "dip_pct": rec.dip_pct,
         "offer": rec.offer_json, "margin": rec.margin_json,
@@ -68,24 +85,33 @@ class DecisionPayload(BaseModel):
 
 
 @router.post("/{rec_id}/decision")
-def decision(rec_id: str, payload: DecisionPayload, db: Session = Depends(get_db)):
-    """Approve, Modify, or Reject a recommendation. Auto-creates offer and experiment on approval."""
+def decision(
+    rec_id: str,
+    payload: DecisionPayload,
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Approve, Modify, or Reject a recommendation owned by the current merchant."""
+    rec = db.query(Recommendation).filter(
+        Recommendation.id == rec_id,
+        Recommendation.merchant_id == merchant.id,
+    ).first()
+    if not rec:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found")
+
     result = apply_decision(db, rec_id, payload.decision, payload.modified_offer)
     if payload.decision in ("approved", "modified"):
-        from api.routes_offer import create_offer
-        from db.models import Offer
+        from api.routes_offer import create_offer_for_merchant
         existing_offer = db.query(Offer).filter(Offer.recommendation_id == rec_id).first()
         if not existing_offer:
             try:
-                create_offer(rec_id, db)
-            except Exception as e:
+                create_offer_for_merchant(rec_id, merchant, db)
+            except Exception:
                 pass
     return result
 
 
 # ─── Margin Calculator ───────────────────────────────────────────────────────
-margin_router = APIRouter(prefix="/api/margin", tags=["margin"])
-
 
 class MarginCalcRequest(BaseModel):
     sell_price: float = Field(..., gt=0, description="Selling price must be > 0")
@@ -96,7 +122,7 @@ class MarginCalcRequest(BaseModel):
 
 @margin_router.post("/check")
 def margin_check(req: MarginCalcRequest):
-    """Run margin calculation directly."""
+    """Run margin calculation directly against safety thresholds."""
     try:
         return check_margin(req.sell_price, req.cost_price, req.discount_pct, req.min_margin_pct)
     except ValueError as e:
@@ -108,10 +134,35 @@ def margin_check(req: MarginCalcRequest):
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
+@bills_router.get("")
+def list_bills(
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Retrieve all confirmed bills for the authenticated merchant."""
+    items = db.query(BillItem).filter(
+        BillItem.merchant_id == merchant.id
+    ).order_by(BillItem.created_at.desc()).all()
+    return [
+        {
+            "id": b.id,
+            "bill_ref": b.bill_ref,
+            "product_name": b.product_name,
+            "cost_price": b.cost_price,
+            "quantity": b.quantity,
+            "unit": b.unit,
+            "created_at": str(b.created_at),
+        }
+        for b in items
+    ]
+
+
 @bills_router.post("/upload")
-async def upload_bill(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_bill(
+    file: UploadFile = File(...),
+    merchant: Merchant = Depends(get_current_merchant),
+):
     """Upload a bill photo — AI extracts items (falls back to empty list)."""
-    # Validate content type
     allowed_types = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
     if file.content_type and file.content_type not in allowed_types and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image or PDF invoice.")
@@ -130,7 +181,7 @@ async def upload_bill(file: UploadFile = File(...), db: Session = Depends(get_db
         "count": len(items),
         "ai_available": len(items) > 0,
         "message": "Review and confirm items below." if items else
-                   "AI extraction unavailable. Please enter items manually.",
+                   "AI extraction completed. Review or enter wholesale items manually below.",
     }
 
 
@@ -147,13 +198,17 @@ class BillConfirmPayload(BaseModel):
 
 
 @bills_router.post("/confirm")
-def confirm_bill(payload: BillConfirmPayload, db: Session = Depends(get_db)):
-    """Save confirmed bill items as product costs."""
+def confirm_bill(
+    payload: BillConfirmPayload,
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    """Save confirmed bill items as product costs strictly for the authenticated merchant."""
     saved = []
     for item in payload.items:
-        # Update or create product
+        # Update or create product under this merchant
         prod = db.query(Product).filter(
-            Product.merchant_id == MERCHANT_ID,
+            Product.merchant_id == merchant.id,
             Product.name == item.product_name,
         ).first()
         if prod:
@@ -161,7 +216,7 @@ def confirm_bill(payload: BillConfirmPayload, db: Session = Depends(get_db)):
             prod.cost_source = "bill"
         else:
             prod = Product(
-                merchant_id=MERCHANT_ID,
+                merchant_id=merchant.id,
                 name=item.product_name,
                 cost_price=item.cost_price,
                 sell_price=round(item.cost_price * 1.3, 2),  # Default 30% markup
@@ -170,7 +225,7 @@ def confirm_bill(payload: BillConfirmPayload, db: Session = Depends(get_db)):
             db.add(prod)
 
         bi = BillItem(
-            merchant_id=MERCHANT_ID,
+            merchant_id=merchant.id,
             product_name=item.product_name,
             cost_price=item.cost_price,
             quantity=item.quantity,
@@ -183,4 +238,3 @@ def confirm_bill(payload: BillConfirmPayload, db: Session = Depends(get_db)):
 
     db.commit()
     return {"saved": saved, "count": len(saved), "status": "ok"}
-

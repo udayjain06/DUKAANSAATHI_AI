@@ -55,11 +55,31 @@ def _daily_multiplier(date: datetime.date, weekday_idx: int) -> float:
 
 
 def seed_merchant(db: Session, shop_type: str = "kirana", merchant_id: int = 1) -> Merchant:
-    """Create or return existing demo merchant."""
+    """Create or return existing demo merchant assigned to the demo account."""
+    from db.models import UserProfile
+    from core.security import hash_password
+
+    demo_user = db.query(UserProfile).filter(UserProfile.id == "demo-user-001").first()
+    if not demo_user:
+        demo_user = UserProfile(
+            id="demo-user-001",
+            email="demo@dukaansaathi.ai",
+            password_hash=hash_password("Demo@123"),
+            full_name="Demo Shopkeeper",
+            balance=28450.0,
+            monthly_budget=30000.0,
+            language="hi",
+            theme="dark",
+            is_demo=True,
+        )
+        db.add(demo_user)
+        db.flush()
+
     merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
     if not merchant:
         merchant = Merchant(
             id=merchant_id,
+            user_id=demo_user.id,
             name="Sharma General Store" if shop_type == "kirana" else "Sweet Treat Bakery",
             shop_type=shop_type,
             min_margin_pct=15.0,
@@ -70,6 +90,11 @@ def seed_merchant(db: Session, shop_type: str = "kirana", merchant_id: int = 1) 
         db.add(merchant)
         db.commit()
         db.refresh(merchant)
+    elif not merchant.user_id:
+        merchant.user_id = demo_user.id
+        db.commit()
+        db.refresh(merchant)
+
     return merchant
 
 

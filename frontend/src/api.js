@@ -8,10 +8,40 @@ const rawBase = import.meta.env.VITE_API_URL || '/api'
 const cleanBase = rawBase.replace(/\/+$/, '')
 const baseURL = cleanBase.endsWith('/api') ? cleanBase : `${cleanBase}/api`
 
+export const TOKEN_KEY = 'dukaansaathi_auth_token'
+
 const api = axios.create({
   baseURL,
   timeout: 15000,
 })
+
+// Automatically attach JWT token to all requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem(TOKEN_KEY)
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+}, (error) => Promise.reject(error))
+
+// Handle session expiration
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const isAuthUrl = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/signup')
+      if (!isAuthUrl) {
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem('paytm_demo_user')
+        if (window.location.pathname !== '/auth') {
+          // Allow current UI to update without hard refresh loop
+          window.dispatchEvent(new CustomEvent('auth:expired'))
+        }
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default api
 

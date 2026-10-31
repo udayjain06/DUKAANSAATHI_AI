@@ -78,10 +78,10 @@ def detect_weak_days(db: Session, merchant_id: int, weeks: int = 8) -> list[dict
 
         results.append({
             "weekday": day,
-            "day_avg": round(day_avg, 2),
-            "baseline": round(baseline, 2),
-            "dip_pct": round(dip_pct, 2),
-            "is_weak": dip_pct > WEAK_DIP_THRESHOLD,
+            "day_avg": round(float(day_avg), 2),
+            "baseline": round(float(baseline), 2),
+            "dip_pct": round(float(dip_pct), 2),
+            "is_weak": bool(dip_pct > WEAK_DIP_THRESHOLD),
             "consistency": f"{weeks_below} of {total_weeks} weeks",
             "confidence": confidence,
         })
@@ -110,7 +110,15 @@ def get_sales_summary(db: Session, merchant_id: int, weeks: int = 8) -> dict:
         txns=("txn_count", "sum"),
         days=("total_amount", "count"),
     ).reset_index()
-    weekly_list = weekly.sort_values("week").to_dict(orient="records")
+    weekly_list = [
+        {
+            "week": str(r["week"]),
+            "revenue": round(float(r["revenue"]), 2),
+            "txns": int(r["txns"]),
+            "days": int(r["days"]),
+        }
+        for r in weekly.sort_values("week").to_dict(orient="records")
+    ]
 
     weekday_avg = get_weekday_summary(df)
 
@@ -121,12 +129,12 @@ def get_sales_summary(db: Session, merchant_id: int, weeks: int = 8) -> dict:
     return {
         "weekly": weekly_list,
         "weekday_avg": weekday_avg,
-        "total_revenue": round(df["total_amount"].sum(), 2),
+        "total_revenue": round(float(df["total_amount"].sum()), 2),
         "total_txns": int(df["txn_count"].sum()),
-        "avg_daily_revenue": round(df["total_amount"].mean(), 2),
+        "avg_daily_revenue": round(float(df["total_amount"].mean()), 2),
         "best_day": best_day,
         "worst_day": worst_day,
-        "data_label": "synthetic" if df["is_synthetic"].all() else "real",
+        "data_label": "synthetic" if bool(df["is_synthetic"].all()) else "real",
     }
 
 

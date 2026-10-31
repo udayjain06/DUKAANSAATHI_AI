@@ -20,14 +20,18 @@ class UserProfile(Base):
     __tablename__ = "user_profile"
     id = Column(String(80), primary_key=True, index=True)  # Supabase UUID or local user ID
     email = Column(String(120), unique=True, index=True)
+    password_hash = Column(String(255), nullable=True)
     full_name = Column(String(120), default="")
-    balance = Column(Float, default=25000.0)
+    balance = Column(Float, default=0.0)
     language = Column(String(10), default="en")  # en | hi
     theme = Column(String(10), default="dark")    # light | dark
     monthly_budget = Column(Float, default=30000.0)
+    is_demo = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utc_now)
 
-    transactions = relationship("Transaction", back_populates="user")
+    transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
+    merchant = relationship("Merchant", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
 
 
 class Transaction(Base):
@@ -48,6 +52,7 @@ class Transaction(Base):
 class Merchant(Base):
     __tablename__ = "merchant"
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(80), ForeignKey("user_profile.id"), nullable=True, index=True)
     name = Column(String(120), default="Demo Shop")
     shop_type = Column(String(60), default="kirana")  # kirana | bakery
     min_margin_pct = Column(Float, default=15.0)
@@ -56,10 +61,12 @@ class Merchant(Base):
     phone = Column(String(20), nullable=True)
     created_at = Column(DateTime, default=utc_now)
 
-    products = relationship("Product", back_populates="merchant")
-    sales = relationship("SalesDaily", back_populates="merchant")
-    recommendations = relationship("Recommendation", back_populates="merchant")
-    payment_orders = relationship("PaymentOrder", back_populates="merchant")
+    user = relationship("UserProfile", back_populates="merchant")
+    products = relationship("Product", back_populates="merchant", cascade="all, delete-orphan")
+    sales = relationship("SalesDaily", back_populates="merchant", cascade="all, delete-orphan")
+    recommendations = relationship("Recommendation", back_populates="merchant", cascade="all, delete-orphan")
+    payment_orders = relationship("PaymentOrder", back_populates="merchant", cascade="all, delete-orphan")
+    chat_messages = relationship("ChatMessage", back_populates="merchant", cascade="all, delete-orphan")
 
 
 class Product(Base):
@@ -108,6 +115,7 @@ class BillItem(Base):
     __tablename__ = "bill_item"
     id = Column(Integer, primary_key=True, index=True)
     merchant_id = Column(Integer, ForeignKey("merchant.id"), nullable=False)
+    bill_id = Column(Integer, ForeignKey("bill.id"), nullable=True, index=True)
     bill_ref = Column(String(60), nullable=True)
     product_name = Column(String(120), nullable=False)
     cost_price = Column(Float, nullable=False)
@@ -188,3 +196,50 @@ class PaymentOrder(Base):
     verified_at = Column(DateTime, nullable=True)
 
     merchant = relationship("Merchant", back_populates="payment_orders")
+
+
+class Bill(Base):
+    """A supplier bill / invoice uploaded by a merchant (OCR source document)."""
+    __tablename__ = "bill"
+    id = Column(Integer, primary_key=True, index=True)
+    merchant_id = Column(Integer, ForeignKey("merchant.id"), nullable=False, index=True)
+    bill_ref = Column(String(60), nullable=True, index=True)
+    file_name = Column(String(255), nullable=True)
+    file_type = Column(String(80), nullable=True)
+    file_size = Column(Integer, default=0)
+    ocr_engine = Column(String(40), default="none")
+    ocr_confidence = Column(Float, nullable=True)
+    raw_text = Column(Text, nullable=True)
+    item_count = Column(Integer, default=0)
+    total_amount = Column(Float, default=0.0)
+    status = Column(String(20), default="extracted")  # extracted | confirmed | failed
+    created_at = Column(DateTime, default=utc_now, index=True)
+
+
+class MLTrainingSample(Base):
+    """
+    Labelled, real-world style training data for the ML engine.
+    Seeded from Indian kirana / bakery / household transaction descriptions.
+    Rows are never exposed across merchants — training uses this shared,
+    anonymised corpus (description, category, amount only).
+    """
+    __tablename__ = "ml_training_sample"
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String(255), nullable=False)
+    category = Column(String(60), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    source = Column(String(30), default="seed")  # seed | merchant | ledger
+    created_at = Column(DateTime, default=utc_now)
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(String(80), primary_key=True, index=True)
+    user_id = Column(String(80), ForeignKey("user_profile.id"), nullable=False, index=True)
+    merchant_id = Column(Integer, ForeignKey("merchant.id"), nullable=True, index=True)
+    sender = Column(String(20), nullable=False)  # 'user' | 'ai'
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now, index=True)
+
+    user = relationship("UserProfile", back_populates="chat_messages")
+    merchant = relationship("Merchant", back_populates="chat_messages")

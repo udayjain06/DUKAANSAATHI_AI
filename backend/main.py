@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from db.session import init_db
+from api.routes_auth import router as auth_router
 from api.routes_merchant import router as merchant_router
 from api.routes_sales import router as sales_router, insights_router
 from api.routes_reco import router as reco_router, bills_router, margin_router
@@ -101,6 +102,7 @@ async def add_security_headers(request, call_next):
 
 
 # Register routers
+app.include_router(auth_router)
 app.include_router(merchant_router)
 app.include_router(sales_router)
 app.include_router(insights_router)

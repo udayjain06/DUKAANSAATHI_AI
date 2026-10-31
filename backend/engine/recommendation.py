@@ -22,17 +22,24 @@ def build_recommendation(db: Session, merchant_id: int, lang: str = "hi") -> dic
     min_margin = merchant.min_margin_pct or 15.0
     risk_budget = merchant.risk_budget_inr or 400.0
 
-    # Step 1: Detect weak day
-    weak_day_info = get_primary_weak_day(db, merchant_id)
-    if not weak_day_info:
-        weak_day_info = {"weekday": "Monday", "dip_pct": 15.0, "confidence": "medium", "data_label": "synthetic"}
-
     # Step 2: Get products for offer
     products = db.query(Product).filter(
         Product.merchant_id == merchant_id,
         Product.is_active == True,
         Product.cost_price.isnot(None),
     ).all()
+
+    if not products:
+        return {
+            "status": "insufficient_data",
+            "message": "Add at least one product with cost price in the Products tab to generate AI recommendations.",
+            "recommendation": None,
+        }
+
+    # Step 1: Detect weak day
+    weak_day_info = get_primary_weak_day(db, merchant_id)
+    if not weak_day_info:
+        weak_day_info = {"weekday": "Monday", "dip_pct": 12.0, "confidence": "preliminary", "data_label": "preliminary"}
 
     if len(products) < 2:
         offer_type = "discount"
