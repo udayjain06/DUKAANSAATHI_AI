@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api, { fmt, pct } from '../api'
 import { Loading, ErrorMsg, Badge, DataLabel, Modal } from '../components/UI'
 
@@ -254,9 +255,9 @@ export default function Recommendations() {
                       Decision recorded: <strong style={{ textTransform: 'capitalize', color: 'var(--heading)' }}>{r.status}</strong>
                     </span>
                     {r.status === 'approved' && (
-                      <a href="/offers" className="btn btn-outline btn-sm">
+                      <Link to="/offers" className="btn btn-outline btn-sm">
                         Go to Active Offers & Experiments →
-                      </a>
+                      </Link>
                     )}
                   </div>
                 )}

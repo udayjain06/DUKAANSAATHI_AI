@@ -11,19 +11,33 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+import re
+import urllib.parse
+
 RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dukaansaathi.db")
 
 
 def normalize_database_url(url: str) -> str:
     """
     Normalize PostgreSQL database URLs for SQLAlchemy 2.0 and psycopg compatibility.
-    Supabase and cloud providers often provide 'postgres://' or 'postgresql://' strings.
+    Supabase and cloud providers often provide 'postgres://' or 'postgresql://' strings,
+    and passwords may contain unescaped special characters (e.g. '%', '&', '@') that
+    break standard DSN/URI parsing.
     """
     if not url:
         return "sqlite:///./dukaansaathi.db"
     
     clean_url = url.strip()
     
+    # Safely escape unencoded special characters in URL password (e.g. Supabase passwords with %, &, @)
+    # Match scheme://user:password@host
+    m = re.match(r'^(?P<scheme>[^:]+://)(?P<user>[^:@]+):(?P<password>[^@]+)@(?P<rest>.+)$', clean_url)
+    if m:
+        scheme, user, password, rest = m.group('scheme', 'user', 'password', 'rest')
+        unquoted = urllib.parse.unquote(password)
+        safe_pwd = urllib.parse.quote(unquoted, safe='')
+        clean_url = f"{scheme}{user}:{safe_pwd}@{rest}"
+
     # Handle deprecated postgres:// prefix
     if clean_url.startswith("postgres://"):
         clean_url = "postgresql+psycopg://" + clean_url[len("postgres://"):]

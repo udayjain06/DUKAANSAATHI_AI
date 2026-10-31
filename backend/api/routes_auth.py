@@ -15,7 +15,7 @@ from db.models import UserProfile, Merchant
 from core.security import hash_password, verify_password, create_access_token
 from core.auth import get_current_user, get_current_merchant
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 EMAIL_REGEX = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
@@ -156,7 +156,24 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     clean_email = payload.email.strip().lower()
     user = db.query(UserProfile).filter(UserProfile.email == clean_email).first()
 
-    if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check password hash or allow standard demo password for demo accounts
+    is_valid = False
+    if user.password_hash and verify_password(payload.password, user.password_hash):
+        is_valid = True
+    elif (user.is_demo or user.email == "demo@dukaansaathi.ai") and payload.password in ("Demo@123", "demo", "demo123"):
+        is_valid = True
+        if not user.password_hash:
+            user.password_hash = hash_password("Demo@123")
+            db.commit()
+
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
@@ -211,7 +228,16 @@ def demo_login(db: Session = Depends(get_db)):
     Access the dedicated Demo Environment.
     Links directly to the sample 8-week sales and product dataset for demonstrations.
     """
-    demo_user = db.query(UserProfile).filter(UserProfile.id == "demo-user-001").first()
+    # Find existing demo account by ID, email, or is_demo flag to avoid duplicate constraints
+    demo_user = (
+        db.query(UserProfile)
+        .filter(
+            (UserProfile.id == "demo-user-001") |
+            (UserProfile.email == "demo@dukaansaathi.ai") |
+            (UserProfile.is_demo == True)
+        )
+        .first()
+    )
     if not demo_user:
         demo_user = UserProfile(
             id="demo-user-001",
@@ -227,12 +253,28 @@ def demo_login(db: Session = Depends(get_db)):
         db.add(demo_user)
         db.commit()
         db.refresh(demo_user)
+    else:
+        # Ensure demo user has proper demo flag & password hash
+        updated = False
+        if not demo_user.is_demo:
+            demo_user.is_demo = True
+            updated = True
+        if not demo_user.password_hash:
+            demo_user.password_hash = hash_password("Demo@123")
+            updated = True
+        if updated:
+            db.commit()
+            db.refresh(demo_user)
 
     merchant = db.query(Merchant).filter(Merchant.id == 1).first()
+    if not merchant:
+        merchant = db.query(Merchant).filter(Merchant.user_id == demo_user.id).first()
     if not merchant:
         from engine.seed import run_seed
         run_seed(db, shop_type="kirana")
         merchant = db.query(Merchant).filter(Merchant.id == 1).first()
+        if not merchant:
+            merchant = db.query(Merchant).first()
 
     if merchant and merchant.user_id != demo_user.id:
         merchant.user_id = demo_user.id

@@ -317,21 +317,31 @@ export default function Dashboard() {
           <div className="card">
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 15, fontWeight: 700 }}>Income vs Expenses Trend</h3>
-              <span style={{ fontSize: 11, color: 'var(--muted)' }}>Past 4 Months</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                {userDash?.monthly_trend?.length
+                  ? `Last ${userDash.monthly_trend.length} month${userDash.monthly_trend.length > 1 ? 's' : ''}`
+                  : 'No data yet'}
+              </span>
             </div>
             <div className="card-body">
-              <div style={{ width: '100%', height: 240 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={userDash?.monthly_trend || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
-                    <YAxis tick={axis} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={v => fmt(v)} contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="income" name="Income" fill={GREEN} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="Expense" fill={RED} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {(userDash?.monthly_trend || []).length === 0 ? (
+                <p style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', padding: 60 }}>
+                  Record transactions to see your monthly income vs expense trend.
+                </p>
+              ) : (
+                <div style={{ width: '100%', height: 240 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={userDash.monthly_trend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} />
+                      <YAxis tick={axis} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={v => fmt(v)} contentStyle={chartTooltipStyle} />
+                      <Bar dataKey="income" name="Income" fill={GREEN} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expense" name="Expense" fill={RED} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </div>
 

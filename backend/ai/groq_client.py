@@ -138,10 +138,12 @@ def _build_context(financial_context: dict | None, lang: str) -> str:
 def _system_prompt(lang: str, financial_context: dict | None) -> str:
     is_hi = lang == "hi"
     language_rule = (
-        "Respond in natural Hindi (Devanagari script), polite and encouraging, "
-        "using simple words an Indian shopkeeper understands."
+        "LANGUAGE: reply in natural Hindi (Devanagari script) only, polite and encouraging, "
+        "using simple words an Indian shopkeeper understands. Even if earlier messages are in "
+        "English, answer in Hindi."
         if is_hi else
-        "Respond in clear, simple English suitable for an Indian shopkeeper."
+        "LANGUAGE: reply in clear, simple English only, suitable for an Indian shopkeeper. "
+        "Even if earlier messages are in Hindi, answer in English."
     )
     return (
         "You are DukaanSaathi AI, a warm financial and retail assistant for Indian "

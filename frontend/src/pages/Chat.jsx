@@ -2,136 +2,153 @@ import React, { useState, useRef, useEffect } from 'react'
 import api from '../api'
 import { useLanguage } from '../context/LanguageContext'
 
+const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+function welcomeMessage(lang) {
+  return {
+    sender: 'ai',
+    text: lang === 'hi'
+      ? 'नमस्ते! मैं DukaanSaathi ग्रोक AI सहायक हूँ। अपनी बिक्री, खर्च, बजट, मशीन लर्निंग (ML) भविष्यवाणी, बिल OCR या दुकान के मुनाफ़े के बारे में कुछ भी पूछें।'
+      : 'Hello! I am your DukaanSaathi Groq AI assistant. Ask me anything about your sales, expenses, budget, ML forecasts, bill OCR or shop profit margins.',
+    time: nowTime(),
+    source: 'welcome',
+  }
+}
+
 export default function Chat() {
   const { lang, setLang } = useLanguage()
-  const [messages, setMessages] = useState([
-    {
-      sender: 'ai',
-      text: lang === 'hi' 
-        ? 'नमस्ते! मैं DukaanSaathi Groq AI सहायक हूँ। अपने खर्च, बजट, मशीन लर्निंग (ML) भविष्यवाणी या दुकान के मुनाफ़े के बारे में कोई भी सवाल पूछें।'
-        : 'Hello! I am your DukaanSaathi Groq AI Assistant. Ask any question regarding your spending, monthly budget, scikit-learn ML spending predictions, or shop profit margins.',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ])
+  const [messages, setMessages] = useState([welcomeMessage(lang)])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [lastSource, setLastSource] = useState(null)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const scrollRef = useRef(null)
 
+  // Load persisted chat history for the authenticated user
   useEffect(() => {
-    // Load persisted chat history for the authenticated user
     api.get('/chat/history')
       .then(res => {
-        if (res.data && res.data.length > 0) {
-          setMessages(res.data)
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setMessages(res.data.map(m => ({ ...m, text: m.text || m.message || '' })))
         }
       })
       .catch(() => {})
+      .finally(() => setHistoryLoaded(true))
   }, [])
+
+  // Keep the welcome bubble in the chosen language until the first real message
+  useEffect(() => {
+    if (historyLoaded) return
+    setMessages(prev => (
+      prev.length === 1 && prev[0].source === 'welcome' ? [welcomeMessage(lang)] : prev
+    ))
+  }, [lang, historyLoaded])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
   const quickPrompts = [
-    { 
-      label: '🔮 ML 30-Day Forecast', 
-      prompt: lang === 'hi' 
-        ? 'Meri agle 30 dino ki ML spending prediction samjhao aur main paise kaise bacha sakta hoon?' 
-        : 'Explain my 30-day ML spending prediction and how I can optimize my budget.' 
+    {
+      label: '🔮 ML 30-Day Forecast',
+      prompt: lang === 'hi'
+        ? 'Meri agle 30 dino ki ML spending prediction samjhao aur main paise kaise bacha sakta hoon?'
+        : 'Explain my 30-day ML spending prediction and how I can optimise my budget.',
     },
-    { 
-      label: '⚠️ Unusual Transactions', 
+    {
+      label: '⚠️ Unusual Transactions',
       prompt: lang === 'hi'
         ? 'Kya mere transactions mein koi unusual ya anomalous kharcha detect hua hai?'
-        : 'Were any unusual or anomalous transactions detected in my account recently?'
+        : 'Were any unusual or anomalous transactions detected in my account recently?',
     },
-    { 
-      label: '📉 Sabse kam bikri kab?', 
+    {
+      label: '📉 Sabse kam bikri kab?',
       prompt: lang === 'hi'
         ? 'Meri dukaan mein sabse kam bikri kis din hoti hai aur kitna dip hai?'
-        : 'Which day of the week is slowest for my shop and what is the revenue dip?'
+        : 'Which day of the week is slowest for my shop and what is the revenue dip?',
     },
-    { 
-      label: '🏷️ Monday Safe Offer', 
+    {
+      label: '🏷️ Monday Safe Offer',
       prompt: lang === 'hi'
         ? 'Monday ke liye koi safe discount ya bundle offer suggest karo jo margin safe rakhe.'
-        : 'Suggest a safe discount or bundle offer for Monday that protects my profit margin.'
+        : 'Suggest a safe discount or bundle offer for Monday that protects my profit margin.',
+    },
+    {
+      label: '🧾 Bill OCR',
+      prompt: lang === 'hi'
+        ? 'Bill upload aur OCR kaise kaam karta hai?'
+        : 'How does bill upload and OCR work?',
     },
   ]
 
   const handleSend = async (textToSend) => {
-    const text = textToSend || input
-    if (!text.trim()) return
+    const text = (textToSend || input).trim()
+    if (!text || loading) return
 
-    const userMsg = {
-      sender: 'user', text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-    setMessages(prev => [...prev, userMsg])
+    setMessages(prev => [...prev, { sender: 'user', text, time: nowTime() }])
     setInput('')
     setLoading(true)
 
     try {
-      let context
-      try {
-        const u = await api.get('/user/dashboard')
-        const f = u.data.financials || {}
-        context = {
-          balance: f.balance,
-          total_income: f.total_income,
-          total_expense: f.total_expense,
-          predicted_30_days: u.data.ml_predictions?.next_30_days_total,
-          top_category: u.data.categories?.[0]?.category,
-        }
-      } catch {
-        context = undefined
-      }
-
+      // Rich endpoint first (grounded in the user's ledger + merchant metrics)
       let res
       try {
-        res = await api.post('/user/chat', { message: text, lang, context })
-      } catch {
+        res = await api.post('/user/chat', { message: text, lang })
+      } catch (primaryErr) {
+        // Fallback for older backend deployments
         res = await api.post('/chat', { message: text, lang })
       }
-      setMessages(prev => [...prev, {
-        sender: 'ai', text: res.data.reply,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }])
-    } catch {
+
+      const reply = res.data?.reply || res.data?.message
+      const source = res.data?.source || 'groq'
+      setLastSource({ source, model: res.data?.model })
+
       setMessages(prev => [...prev, {
         sender: 'ai',
-        text: lang === 'hi' 
-          ? 'माफी, सर्वर से जुड़ने में समस्या आई। कृपया दोबारा प्रयास करें।'
-          : 'Sorry, could not connect to the server. Please try again.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        text: reply || (lang === 'hi' ? 'कोई उत्तर नहीं मिला।' : 'No response received.'),
+        time: nowTime(),
+        source,
+        model: res.data?.model,
+      }])
+    } catch (err) {
+      setLastSource({ source: 'error' })
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        text: lang === 'hi'
+          ? `माफ़ी, सर्वर से जुड़ने में समस्या आई${err.response?.status ? ` (${err.response.status})` : ''}. कृपया दोबारा प्रयास करें।`
+          : `Sorry, I could not reach the server${err.response?.status ? ` (${err.response.status})` : ''}. Please try again.`,
+        time: nowTime(),
+        source: 'error',
       }])
     } finally {
       setLoading(false)
     }
   }
 
+  const online = lastSource?.source === 'groq'
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h2 style={{ fontSize: 22, color: 'var(--heading)', fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
               AI Financial Assistant
             </h2>
             <span style={{
-              background: 'rgba(0, 186, 242, 0.12)',
-              color: '#00BAF2',
+              background: online ? 'rgba(16, 185, 129, 0.12)' : 'rgba(0, 186, 242, 0.12)',
+              color: online ? '#10B981' : '#00BAF2',
               fontSize: 11,
               fontWeight: 700,
               padding: '3px 9px',
               borderRadius: '999px',
-              border: '1px solid rgba(0, 186, 242, 0.3)'
+              border: `1px solid ${online ? 'rgba(16, 185, 129, 0.3)' : 'rgba(0, 186, 242, 0.3)'}`,
             }}>
-              ⚡ Powered by Groq LLaMA
+              {online ? '● Groq online' : '⚡ Groq AI + offline fallback'}
             </span>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
-            Bilingual AI advisor (Hindi / English). Explains ML predictions, anomalies, budgeting, and profit protection.
+            Bilingual advisor (Hindi / English) grounded in your real sales, expenses and ML forecasts.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -151,16 +168,11 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Chat container */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '620px', overflow: 'hidden' }}>
-        {/* Messages */}
-        <div ref={scrollRef} style={{
-          flex: 1, padding: 22, overflowY: 'auto',
-          background: 'var(--bg)'
-        }}>
+        <div ref={scrollRef} style={{ flex: 1, padding: 22, overflowY: 'auto', background: 'var(--bg)' }}>
           {messages.map((m, idx) => (
             <div
-              key={idx}
+              key={m.id || idx}
               style={{
                 display: 'flex',
                 justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start',
@@ -182,7 +194,7 @@ export default function Chat() {
                   whiteSpace: 'pre-wrap',
                 }}
               >
-                {m.text}
+                {m.text || m.message}
                 <div
                   style={{
                     fontSize: 10.5,
@@ -191,7 +203,9 @@ export default function Chat() {
                     color: m.sender === 'user' ? 'rgba(0, 41, 112, 0.7)' : 'var(--muted)',
                   }}
                 >
-                  {m.time}
+                  {m.source === 'groq' && m.model ? `via ${m.model} · ` : ''}
+                  {m.source === 'offline' ? 'offline assistant · ' : ''}
+                  {m.time || ''}
                 </div>
               </div>
             </div>
@@ -211,13 +225,12 @@ export default function Chat() {
                 gap: 8,
               }}>
                 <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                <span>Groq AI is thinking...</span>
+                <span>{lang === 'hi' ? 'सोच रहा है...' : 'Thinking...'}</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Quick prompt suggestions */}
         <div style={{
           padding: '10px 18px',
           borderTop: '1px solid var(--border)',
@@ -225,7 +238,7 @@ export default function Chat() {
           display: 'flex',
           gap: 8,
           overflowX: 'auto',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
         }}>
           {quickPrompts.map((qp, i) => (
             <button
@@ -234,13 +247,13 @@ export default function Chat() {
               className="btn btn-sm btn-ghost"
               style={{ fontSize: 12, padding: '5px 12px', flexShrink: 0 }}
               onClick={() => handleSend(qp.prompt)}
+              disabled={loading}
             >
               {qp.label}
             </button>
           ))}
         </div>
 
-        {/* Input box */}
         <div style={{
           padding: 16,
           borderTop: '1px solid var(--border)',
@@ -251,10 +264,13 @@ export default function Chat() {
           <input
             className="form-input"
             style={{ flex: 1 }}
-            placeholder={lang === 'hi' ? 'यहाँ सवाल लिखें (जैसे: मेरा 30 दिनों का बजट कैसा है?)...' : 'Type your question (e.g. How is my 30-day budget?)...'}
+            placeholder={lang === 'hi'
+              ? 'यहाँ सवाल लिखें (जैसे: मेरा 30 दिनों का बजट कैसा है?)...'
+              : 'Type your question (e.g. How is my 30-day budget?)...'}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleSend() }}
+            disabled={loading}
           />
           <button
             className="btn btn-primary"
@@ -262,7 +278,7 @@ export default function Chat() {
             onClick={() => handleSend()}
             disabled={loading || !input.trim()}
           >
-            {loading ? 'Sending...' : (lang === 'hi' ? 'पूछें' : 'Send')}
+            {loading ? '...' : (lang === 'hi' ? 'पूछें' : 'Send')}
           </button>
         </div>
       </div>

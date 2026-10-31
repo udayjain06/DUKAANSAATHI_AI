@@ -15,8 +15,14 @@ const api = axios.create({
   timeout: 15000,
 })
 
-// Automatically attach JWT token to all requests
+// Automatically attach JWT token to all requests & normalize paths
 api.interceptors.request.use((config) => {
+  if (config.url) {
+    // If baseURL already ends with /api, strip redundant leading /api from endpoint path
+    if (baseURL.endsWith('/api') && config.url.startsWith('/api/')) {
+      config.url = config.url.slice(4)
+    }
+  }
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

@@ -79,7 +79,7 @@ else:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_origin_regex=r"^https://.*\.vercel\.app$",
+        allow_origin_regex=r"^(https://.*\.vercel\.app|https://.*\.onrender\.com|http://localhost:\d+|http://127\.0\.0\.1:\d+)$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -96,7 +96,9 @@ async def add_security_headers(request, call_next):
 
 
 # Register routers
-app.include_router(auth_router)
+# Support both /api/auth and /auth prefixes so frontend never gets 404 regardless of baseURL
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(auth_router, prefix="/auth", include_in_schema=False)
 app.include_router(merchant_router)
 app.include_router(sales_router)
 app.include_router(insights_router)

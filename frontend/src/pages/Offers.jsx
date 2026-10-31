@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api, { fmt, pct } from '../api'
 import { Loading, ErrorMsg, Badge, DataLabel, Modal } from '../components/UI'
 
@@ -66,9 +67,9 @@ export default function Offers() {
           <p style={{ color: 'var(--muted)', fontSize: 13, maxWidth: 420, margin: '8px auto 20px' }}>
             Approve a recommendation to automatically generate marketing copy, in-shop posters, and experiment tracking.
           </p>
-          <a href="/recommendations" className="btn btn-primary">
+          <Link to="/recommendations" className="btn btn-primary">
             Review Recommendations →
-          </a>
+          </Link>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 30 }}>

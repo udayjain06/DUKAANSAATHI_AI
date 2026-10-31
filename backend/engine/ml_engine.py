@@ -17,7 +17,7 @@ import os
 import json
 import logging
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import joblib
 import numpy as np
@@ -448,9 +448,11 @@ def predict_future_spending(historical_daily_amounts: list[float] | None = None)
         series = [float(v) for v in DAILY_SALES_SERIES]
         if historical_daily_amounts:
             # Blend the user's recent average with the seasonal baseline
-            recent = [float(v) for v in historical_daily_amounts[-7:] if v is not None]
+            recent = [float(v) for v in historical_daily_amounts if v is not None]
             if recent:
-                ratio = (float(np.mean(recent)) + 1.0) / (float(np.mean(series[-7:])) + 1.0)
+                user_avg = float(np.mean(recent))
+                base_avg = float(np.mean(series)) or 1.0
+                ratio = max(0.3, min(3.0, (user_avg + 1.0) / (base_avg + 1.0)))
                 series = [max(50.0, v * ratio) for v in series]
 
     history = list(series[-7:])
@@ -604,7 +606,24 @@ def analyze_user_finances(transactions: list[dict], monthly_budget: float = 3000
         d = str(t.get("date") or "")[:10]
         if len(d) == 10:
             booking_dates[d] = booking_dates.get(d, 0.0) + _amt(t)
-    daily_series = [booking_dates[k] for k in sorted(booking_dates.keys())]
+    # Build a *continuous* daily series (missing days = 0 spend) so the model
+    # learns the real per-day rate instead of a compressed list of shopping days.
+    daily_series: list[float] = []
+    if booking_dates:
+        ordered_days = sorted(booking_dates.keys())
+        try:
+            start = datetime.strptime(ordered_days[0], "%Y-%m-%d").date()
+            end = datetime.strptime(ordered_days[-1], "%Y-%m-%d").date()
+            span = (end - start).days + 1
+            if 2 <= span <= 400:
+                daily_series = [
+                    booking_dates.get((start + timedelta(days=i)).isoformat(), 0.0)
+                    for i in range(span)
+                ]
+            else:
+                daily_series = [booking_dates[k] for k in ordered_days]
+        except ValueError:
+            daily_series = [booking_dates[k] for k in ordered_days]
     predictions = predict_future_spending(daily_series if len(daily_series) >= 10 else None)
 
     # Anomaly detection (leave-one-out context for per-merchant behaviour)

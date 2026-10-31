@@ -23,20 +23,35 @@ export function Loader({ onReveal, onDone }) {
     let raf
     let t1
     let t2
+    let finished = false
+
+    const finish = () => {
+      if (finished) return
+      finished = true
+      setProgress(100)
+      setLeaving(true)
+      t1 = setTimeout(() => onReveal && onReveal(), 150)
+      t2 = setTimeout(() => onDone && onDone(), 950)
+    }
+
     const tick = (now) => {
+      if (finished) return
       const t = Math.min((now - start) / total, 1)
       setProgress(Math.round((1 - Math.pow(1 - t, 3)) * 100))
       if (t < 1) {
         raf = requestAnimationFrame(tick)
       } else {
-        setLeaving(true)
-        t1 = setTimeout(() => onReveal && onReveal(), 150)
-        t2 = setTimeout(() => onDone && onDone(), 950)
+        finish()
       }
     }
     raf = requestAnimationFrame(tick)
+    // Fallback: requestAnimationFrame is paused in background tabs, which would
+    // otherwise leave the splash screen stuck forever.
+    const guard = setTimeout(finish, total + 600)
+
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(guard)
       clearTimeout(t1)
       clearTimeout(t2)
     }
